@@ -101,25 +101,31 @@ initContext = ContextState
   , ctxFont = "10px sans-serif"
   }
 
-data Context a = Context (ContextState -> IO (ContextState, a))
+data Context a = Context (ContextState -> (ContextState, a))
 
 instance Functor Context where
-  fmap f (Context act) = Context $ \ctx -> do
-    (ctx', a) <- act ctx
-    return (ctx', f a)
+  fmap f (Context act) = Context $ \ctx ->
+    let
+      (ctx', a) = act ctx
+    in
+      (ctx', f a)
 
 instance Applicative Context where
-  pure a = Context $ \ctx -> return (ctx, a)
-  Context fAct <*> Context aAct = Context $ \ctx -> do
-    (ctx', f) <- fAct ctx
-    (ctx'', a) <- aAct ctx'
-    return (ctx'', f a)
+  pure a = Context $ \ctx -> (ctx, a)
+  Context fAct <*> Context aAct = Context $ \ctx ->
+    let
+      (ctx', f) = fAct ctx
+      (ctx'', a) = aAct ctx'
+    in
+      (ctx'', f a)
 
 instance Monad Context where
-  Context mAct >>= f = Context $ \ctx -> do
-    (ctx', a) <- mAct ctx
-    let Context fAct = f a
-    fAct ctx'
+  Context mAct >>= f = Context $ \ctx ->
+    let
+      (ctx', a) = mAct ctx
+      Context fAct = f a
+    in
+      fAct ctx'
 
 data Matrix = Matrix
   Double Double Double
