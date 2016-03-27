@@ -67,3 +67,81 @@ arc (Point x y) r start end dir =
 
 rect :: Point -> Size -> IO ()
 rect (Point x y) (Size w h) = putStrLn $ "ctx.rect(" ++ show x ++ "," ++ show y ++ "," ++ show w ++ "," ++ show h ++ ");"
+
+transform :: Matrix -> IO ()
+transform
+  ( Matrix
+    a11 a12 a13
+    a21 a22 a23
+  )
+  = putStrLn $ "ctx.setTransform(" ++ show a11 ++ "," ++ show a21 ++ "," ++ show a12 ++ "," ++ show a22 ++ "," ++ show a13 ++ "," ++ show a23 ++ ");"
+
+
+fillStyle :: String -> IO ()
+fillStyle val = putStrLn $ "ctx.fillStyle = " ++ show val ++ ";"
+
+strokeStyle :: String -> IO ()
+strokeStyle val = putStrLn $ "ctx.strokeStyle = " ++ show val ++ ";"
+
+
+clearRect :: Point -> Size -> IO ()
+clearRect (Point x y) (Size w h) =
+  putStrLn $ "ctx.clearRect(" ++ show x ++ "," ++ show y ++ "," ++ show w ++ "," ++ show h ++ ");"
+
+fillRect :: Point -> Size -> IO ()
+fillRect (Point x y) (Size w h) =
+  putStrLn $ "ctx.fillRect(" ++ show x ++ "," ++ show y ++ "," ++ show w ++ "," ++ show h ++ ");"
+
+strokeRect :: Point -> Size -> IO ()
+strokeRect (Point x y) (Size w h) =
+  putStrLn $ "ctx.strokeRect(" ++ show x ++ "," ++ show y ++ "," ++ show w ++ "," ++ show h ++ ");"
+
+
+fillText :: String -> Point -> Maybe Double -> IO ()
+fillText str (Point x y) = \case
+  Nothing -> putStrLn $ "ctx.fillText(" ++ show str ++ "," ++ show x ++ "," ++ show y ++ ");"
+  Just w -> putStrLn $ "ctx.fillText(" ++ show str ++ "," ++ show x ++ "," ++ show y ++ "," ++ show w ++ ");"
+
+strokeText :: String -> Point -> Maybe Double -> IO ()
+strokeText str (Point x y) = \case
+  Nothing -> putStrLn $ "ctx.strokeText(" ++ show str ++ "," ++ show x ++ "," ++ show y ++ ");"
+  Just w -> putStrLn $ "ctx.strokeText(" ++ show str ++ "," ++ show x ++ "," ++ show y ++ "," ++ show w ++ ");"
+
+measureText :: String -> IO Double
+measureText str = error "Can't mesureText when offline"
+
+
+beginPath :: IO ()
+beginPath = putStrLn "ctx.beginPath();"
+
+fill :: IO ()
+fill = putStrLn "ctx.fill();"
+
+stroke :: IO ()
+stroke = putStrLn "ctx.stroke();"
+
+clip :: IO ()
+clip = putStrLn "ctx.clip();"
+
+isPointInPath :: Point -> IO Bool
+isPointInPath (Point x y) = error "Can't check inPointInPath"
+
+
+globalAlpha :: Double -> IO ()
+globalAlpha val = putStrLn $ "ctx.globalAlpha = " ++ show val ++ ";"
+
+globalCompositeOperation :: CompositeOp -> IO ()
+globalCompositeOperation val = putStrLn $ "ctx.globalCompositeOperation = " ++ show (strValue val) ++ ";"
+
+
+shadowColor :: String -> IO ()
+shadowColor val = putStrLn $ "ctx.shadowColor = " ++ show val ++ ";"
+
+shadowOffsetX :: Double -> IO ()
+shadowOffsetX val = putStrLn $ "ctx.shadowOffsetX = " ++ show val ++ ";"
+
+shadowOffsetY :: Double -> IO ()
+shadowOffsetY val = putStrLn $ "ctx.shadowOffsetY = " ++ show val ++ ";"
+
+shadowBlur :: Double -> IO ()
+shadowBlur val = putStrLn $ "ctx.shadowBlur = " ++ show val ++ ";"

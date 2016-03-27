@@ -61,6 +61,34 @@ instance StringValue LineJoin where
     LineJoinRound -> "round"
     LineJoinMiter -> "miter"
 
+data CompositeOp
+  = CompositeSourceAtop
+  | CompositeSourceIn
+  | CompositeSourceOut
+  | CompositeSourceOver
+  | CompositeDestinationAtop
+  | CompositeDestinationIn
+  | CompositeDestinationOut
+  | CompositeDestinationOver
+  | CompositeLighter
+  | CompositeCopy
+  | CompositeXor
+  | CompositeVendorSpec String String
+instance StringValue CompositeOp where
+  strValue = \case
+    CompositeSourceAtop -> "source-atop"
+    CompositeSourceIn -> "source-in"
+    CompositeSourceOut -> "source-out"
+    CompositeSourceOver -> "source-over"
+    CompositeDestinationAtop -> "destination-atop"
+    CompositeDestinationIn -> "destination-in"
+    CompositeDestinationOut -> "destination-out"
+    CompositeDestinationOver -> "destination-over"
+    CompositeLighter -> "lighter"
+    CompositeCopy -> "copy"
+    CompositeXor -> "xor"
+    CompositeVendorSpec vendorName operationName -> vendorName ++ "-" ++ operationName
+
 data RotateDirection
   = CW
   | CCW
