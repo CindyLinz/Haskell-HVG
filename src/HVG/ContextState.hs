@@ -11,93 +11,112 @@ import HVG.Type
 --
 
 setTransform :: Matrix -> Builder ()
-setTransform val = Builder $ \ctx bld -> (ctx {ctxTransform = val}, bld, ())
+setTransform val = Builder $ \ctx bld -> BuilderPartDone ctx{ctxTransform = val} bld ()
 getTransform :: Builder Matrix
-getTransform = Builder $ \ctx bld -> (ctx, bld, ctxTransform ctx)
+getTransform = Builder $ \ctx bld -> BuilderPartDone ctx bld (ctxTransform ctx)
 applyTransform :: Matrix -> Builder ()
-applyTransform val = Builder $ \ctx bld -> (ctx {ctxTransform = val <> ctxTransform ctx}, bld, ())
+applyTransform val = Builder $ \ctx bld -> BuilderPartDone ctx{ctxTransform = val <> ctxTransform ctx} bld ()
 
 
 setFill :: Maybe String -> Builder ()
-setFill val = Builder $ \ctx bld -> (ctx {ctxFill = val}, bld, ())
+setFill val = Builder $ \ctx bld -> BuilderPartDone ctx{ctxFill = val} bld ()
 getFill :: Builder (Maybe String)
-getFill = Builder $ \ctx bld -> (ctx, bld, ctxFill ctx)
+getFill = Builder $ \ctx bld -> BuilderPartDone ctx bld (ctxFill ctx)
 
 setStroke :: Maybe String -> Builder ()
-setStroke val = Builder $ \ctx bld -> (ctx {ctxStroke = val}, bld, ())
+setStroke val = Builder $ \ctx bld -> BuilderPartDone ctx{ctxStroke = val} bld ()
 getStroke :: Builder (Maybe String)
-getStroke = Builder $ \ctx bld -> (ctx, bld, ctxStroke ctx)
+getStroke = Builder $ \ctx bld -> BuilderPartDone ctx bld (ctxStroke ctx)
 
 
 setLineWidth :: Double -> Builder ()
-setLineWidth val = Builder $ \ctx bld -> (ctx {ctxLineWidth = val}, bld, ())
+setLineWidth val = Builder $ \ctx bld -> BuilderPartDone ctx{ctxLineWidth = val} bld ()
 getLineWidth :: Builder Double
-getLineWidth = Builder $ \ctx bld -> (ctx, bld, ctxLineWidth ctx)
+getLineWidth = Builder $ \ctx bld -> BuilderPartDone ctx bld (ctxLineWidth ctx)
 
 setLineCap :: LineCap -> Builder ()
-setLineCap val = Builder $ \ctx bld -> (ctx {ctxLineCap = val}, bld, ())
+setLineCap val = Builder $ \ctx bld -> BuilderPartDone ctx{ctxLineCap = val} bld ()
 getLineCap :: Builder LineCap
-getLineCap = Builder $ \ctx bld -> (ctx, bld, ctxLineCap ctx)
+getLineCap = Builder $ \ctx bld -> BuilderPartDone ctx bld (ctxLineCap ctx)
 
 setLineJoin :: LineJoin -> Builder ()
-setLineJoin val = Builder $ \ctx bld -> (ctx {ctxLineJoin = val}, bld, ())
+setLineJoin val = Builder $ \ctx bld -> BuilderPartDone ctx{ctxLineJoin = val} bld ()
 getLineJoin :: Builder LineJoin
-getLineJoin = Builder $ \ctx bld -> (ctx, bld, ctxLineJoin ctx)
+getLineJoin = Builder $ \ctx bld -> BuilderPartDone ctx bld (ctxLineJoin ctx)
 
 setMiterLimit :: Double -> Builder ()
-setMiterLimit val = Builder $ \ctx bld -> (ctx {ctxMiterLimit = val}, bld, ())
+setMiterLimit val = Builder $ \ctx bld -> BuilderPartDone ctx{ctxMiterLimit = val} bld ()
 getMiterLimit :: Builder Double
-getMiterLimit = Builder $ \ctx bld -> (ctx, bld, ctxMiterLimit ctx)
+getMiterLimit = Builder $ \ctx bld -> BuilderPartDone ctx bld (ctxMiterLimit ctx)
 
 setLineDash :: [Double] -> Builder ()
-setLineDash val = Builder $ \ctx bld -> (ctx {ctxLineDash = val}, bld, ())
+setLineDash val = Builder $ \ctx bld -> BuilderPartDone ctx{ctxLineDash = val} bld ()
 getLineDash :: Builder [Double]
-getLineDash = Builder $ \ctx bld -> (ctx, bld, ctxLineDash ctx)
+getLineDash = Builder $ \ctx bld -> BuilderPartDone ctx bld (ctxLineDash ctx)
 
 setLineDashOffset :: Double -> Builder ()
-setLineDashOffset val = Builder $ \ctx bld -> (ctx {ctxLineDashOffset = val}, bld, ())
+setLineDashOffset val = Builder $ \ctx bld -> BuilderPartDone ctx{ctxLineDashOffset = val} bld ()
 getLineDashOffset :: Builder Double
-getLineDashOffset = Builder $ \ctx bld -> (ctx, bld, ctxLineDashOffset ctx)
+getLineDashOffset = Builder $ \ctx bld -> BuilderPartDone ctx bld (ctxLineDashOffset ctx)
 
 
 setTextAlign :: TextAlign -> Builder ()
-setTextAlign val = Builder $ \ctx bld -> (ctx {ctxTextAlign = val}, bld, ())
+setTextAlign val = Builder $ \ctx bld -> BuilderPartDone ctx{ctxTextAlign = val} bld ()
 getTextAlign :: Builder TextAlign
-getTextAlign = Builder $ \ctx bld -> (ctx, bld, ctxTextAlign ctx)
+getTextAlign = Builder $ \ctx bld -> BuilderPartDone ctx bld (ctxTextAlign ctx)
 
 setTextBaseline :: TextBaseline -> Builder ()
-setTextBaseline val = Builder $ \ctx bld -> (ctx {ctxTextBaseline = val}, bld, ())
+setTextBaseline val = Builder $ \ctx bld -> BuilderPartDone ctx{ctxTextBaseline = val} bld ()
 getTextBaseline :: Builder TextBaseline
-getTextBaseline = Builder $ \ctx bld -> (ctx, bld, ctxTextBaseline ctx)
+getTextBaseline = Builder $ \ctx bld -> BuilderPartDone ctx bld (ctxTextBaseline ctx)
 
 setFont :: String -> Builder ()
-setFont val = Builder $ \ctx bld -> (ctx {ctxFont = val}, bld, ())
+setFont val = Builder $ \ctx bld -> BuilderPartDone ctx{ctxFont = val} bld ()
 getFont :: Builder String
-getFont = Builder $ \ctx bld -> (ctx, bld, ctxFont ctx)
+getFont = Builder $ \ctx bld -> BuilderPartDone ctx bld (ctxFont ctx)
 
+
+fork :: Builder () -> Builder ()
+fork (Builder act) = Builder $ \ctx bld ->
+  case act ctx bld of
+    BuilderPartDone _ bld' _ ->
+      BuilderPartDone ctx bld' ()
+    BuilderPartWaitDraw drawName ctxdBld ->
+      BuilderPartDone ctx (addBuilderWaitDraw drawName ctxdBld bld) ()
+    BuilderPartWaitLink linkName ctxdBld ->
+      BuilderPartDone ctx (addBuilderWaitLink linkName ctxdBld bld) ()
 
 local :: Builder a -> Builder a
 local (Builder act) = Builder $ \ctx bld ->
   let
-    (_, bld', a) = act ctx bld
+    go = \case
+      BuilderPartDone _ bld' a ->
+        BuilderPartDone ctx bld' a
+      BuilderPartWaitDraw drawName (ContextedBuilder ctxdAct) ->
+        BuilderPartWaitDraw drawName $ ContextedBuilder $ \bld -> go (ctxdAct bld)
+      BuilderPartWaitLink linkName (ContextedBuilder ctxdAct) ->
+        BuilderPartWaitLink linkName $ ContextedBuilder $ \bld -> go (ctxdAct bld)
   in
-    (ctx, bld', a)
+    go (act ctx bld)
 
 name :: String -> Builder ()
 name nextName = Builder $ \ctx bld ->
-  ( ctx
-    { ctxNextDrawName = Just nextName
-    , ctxNextLinkName = Just nextName
-    }
-  , bld
-  , ()
-  )
+  BuilderPartDone
+    ctx
+      { ctxNextDrawName = Just nextName
+      , ctxNextLinkName = Just nextName
+      }
+    bld
+    ()
 
 addDraw :: Draw -> Builder ()
 addDraw draw = Builder $ \ctx bld ->
   case ctxNextDrawName ctx of
     Nothing ->
-      (ctx, bld, ())
+      BuilderPartDone
+        ctx
+        bld{ bldDraw = bldDraw bld >> draw }
+        ()
 
     Just myName ->
       let
@@ -110,17 +129,29 @@ addDraw draw = Builder $ \ctx bld ->
         bld'' = case M.lookup myName (bldWaitDraw bld) of
           Nothing ->
             bld'
-          Just (ContextedBuilder continue) ->
-            bld'' where (_, bld'', ()) = continue bld'
+          Just ctxdBlds ->
+            go bld' ctxdBlds
+            where
+              go bld' (ContextedBuilder continue : otherCtxdBlds) =
+                case continue bld' of
+                  BuilderPartDone ctx'' bld'' _ ->
+                    go bld'' otherCtxdBlds
+                  BuilderPartWaitDraw drawName ctxdBld ->
+                    go (addBuilderWaitDraw drawName ctxdBld bld') otherCtxdBlds
+                  BuilderPartWaitLink linkName ctxdBld ->
+                    go (addBuilderWaitLink linkName ctxdBld bld') otherCtxdBlds
+
+              go bld' _ =
+                bld'
 
       in
-        (ctx {ctxNextDrawName = Nothing}, bld'', ())
+        BuilderPartDone ctx{ctxNextDrawName = Nothing} bld'' ()
 
 addLink :: Link -> Builder ()
 addLink link = Builder $ \ctx bld ->
   case ctxNextLinkName ctx of
     Nothing ->
-      (ctx, bld, ())
+      BuilderPartDone ctx bld ()
 
     Just myName ->
       let
@@ -132,11 +163,23 @@ addLink link = Builder $ \ctx bld ->
         bld'' = case M.lookup myName (bldWaitLink bld) of
           Nothing ->
             bld'
-          Just (ContextedBuilder continue) ->
-            bld'' where (_, bld'', ()) = continue bld'
+          Just ctxdBlds ->
+            go bld' ctxdBlds
+            where
+              go bld' (ContextedBuilder continue : otherCtxdBlds) =
+                case continue bld' of
+                  BuilderPartDone ctx'' bld'' _ ->
+                    go bld'' otherCtxdBlds
+                  BuilderPartWaitDraw drawName ctxdBld ->
+                    go (addBuilderWaitDraw drawName ctxdBld bld') otherCtxdBlds
+                  BuilderPartWaitLink linkName ctxdBld ->
+                    go (addBuilderWaitLink linkName ctxdBld bld') otherCtxdBlds
+
+              go bld' _ =
+                bld'
 
       in
-        (ctx {ctxNextLinkName = Nothing}, bld'', ())
+        BuilderPartDone ctx{ctxNextLinkName = Nothing} bld'' ()
 
 queryDraw :: String -> Builder ()
 queryDraw drawName = undefined

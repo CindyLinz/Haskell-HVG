@@ -137,8 +137,8 @@ initContextState = ContextState
 data BuilderState = BuilderState
   { bldNamedDraw :: S.Set String
   , bldNamedLink :: M.Map String Link
-  , bldWaitDraw :: M.Map String (ContextedBuilder ())
-  , bldWaitLink :: M.Map String (ContextedBuilder ())
+  , bldWaitDraw :: M.Map String [ContextedBuilder ()]
+  , bldWaitLink :: M.Map String [ContextedBuilder ()]
   , bldDraw :: IO ()
   }
 initBuilderState :: BuilderState
@@ -150,32 +150,78 @@ initBuilderState = BuilderState
   , bldDraw = return ()
   }
 
-data Builder a = Builder (ContextState -> BuilderState -> (ContextState, BuilderState, a))
-data ContextedBuilder a = ContextedBuilder (BuilderState -> (ContextState, BuilderState, a))
+addBuilderWaitDraw :: String -> ContextedBuilder () -> BuilderState -> BuilderState
+addBuilderWaitDraw drawName ctxdBld bld = bld
+  { bldWaitDraw = M.insertWith (++) drawName [ctxdBld] (bldWaitDraw bld)
+  }
+addBuilderWaitLink :: String -> ContextedBuilder () -> BuilderState -> BuilderState
+addBuilderWaitLink linkName ctxdBld bld = bld
+  { bldWaitLink = M.insertWith (++) linkName [ctxdBld] (bldWaitLink bld)
+  }
+
+newtype Builder a = Builder (ContextState -> BuilderState -> BuilderPart a)
+newtype ContextedBuilder a = ContextedBuilder (BuilderState -> BuilderPart a)
+
+data BuilderPart a
+  = BuilderPartDone ContextState BuilderState a
+  | BuilderPartWaitDraw String (ContextedBuilder a)
+  | BuilderPartWaitLink String (ContextedBuilder a)
 
 instance Functor Builder where
   fmap f (Builder act) = Builder $ \ctx bld ->
-    let
-      (ctx', bld', a) = act ctx bld
-    in
-      (ctx', bld', f a)
+    fmap f (act ctx bld)
+instance Functor ContextedBuilder where
+  fmap f (ContextedBuilder act) = ContextedBuilder $ \bld ->
+    fmap f (act bld)
+instance Functor BuilderPart where
+  fmap f = \case
+    BuilderPartDone ctx' bld' a -> BuilderPartDone ctx' bld' (f a)
+    BuilderPartWaitDraw drawName ctxdBuilder -> BuilderPartWaitDraw drawName (fmap f ctxdBuilder)
+    BuilderPartWaitLink linkName ctxdBuilder -> BuilderPartWaitLink linkName (fmap f ctxdBuilder)
 
 instance Applicative Builder where
-  pure a = Builder $ \ctx bld -> (ctx, bld, a)
+  pure a = Builder $ \ctx bld -> BuilderPartDone ctx bld a
   Builder fAct <*> Builder aAct = Builder $ \ctx bld ->
-    let
-      (ctx', bld', f) = fAct ctx bld
-      (ctx'', bld'', a) = aAct ctx' bld'
-    in
-      (ctx'', bld'', f a)
+    go (fAct ctx bld)
+    where
+      go = \case
+        BuilderPartDone ctx' bld' f ->
+          case aAct ctx' bld' of
+            BuilderPartDone ctx'' bld'' a ->
+              BuilderPartDone ctx'' bld'' (f a)
+            BuilderPartWaitDraw drawName (ContextedBuilder ctxdAAct) ->
+              BuilderPartWaitDraw drawName $ ContextedBuilder $ \bld -> f <$> ctxdAAct bld
+            BuilderPartWaitLink linkName (ContextedBuilder ctxdAAct) ->
+              BuilderPartWaitLink linkName $ ContextedBuilder $ \bld -> f <$> ctxdAAct bld
+        BuilderPartWaitDraw drawName (ContextedBuilder ctxdFAct) ->
+          BuilderPartWaitDraw drawName $ ContextedBuilder $ \bld -> go (ctxdFAct bld)
+        BuilderPartWaitLink linkName (ContextedBuilder ctxdFAct) ->
+          BuilderPartWaitLink linkName $ ContextedBuilder $ \bld -> go (ctxdFAct bld)
+  {-
+  Builder fAct <*> Builder aAct = Builder $ \ctx bld ->
+    case fAct ctx bld of
+      BuilderPartDone ctx' bld' f ->
+        case aAct ctx' bld' of
+          BuilderPartDone ctx'' bld'' a ->
+            BuilderPartDone ctx'' bld'' (f a)
+          BuilderPartWaitDraw drawName (ContextedBuilder ctxdAAct) ->
+            BuilderPartDone 
+            BuilderPartWaitDraw drawName $ ContextedBuilder $ \bld -> f <$> ctxdAAct bld
+          BuilderPartWaitLink linkName (ContextedBuilder ctxdAAct) ->
+            BuilderPartWaitLink linkName $ ContextedBuilder $ \bld -> f <$> ctxdAAct bld
+  -}
 
 instance Monad Builder where
   Builder mAct >>= f = Builder $ \ctx bld ->
-    let
-      (ctx', bld', a) = mAct ctx bld
-      Builder fAct = f a
-    in
-      fAct ctx' bld'
+    go (mAct ctx bld)
+    where
+      go = \case
+        BuilderPartDone ctx' bld' a -> fAct ctx' bld'
+          where Builder fAct = f a
+        BuilderPartWaitDraw drawName (ContextedBuilder ctxdFAct) ->
+          BuilderPartWaitDraw drawName $ ContextedBuilder $ \bld -> go (ctxdFAct bld)
+        BuilderPartWaitLink linkName (ContextedBuilder ctxdFAct) ->
+          BuilderPartWaitLink linkName $ ContextedBuilder $ \bld -> go (ctxdFAct bld)
 
 data Matrix = Matrix
   Double Double Double
