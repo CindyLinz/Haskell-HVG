@@ -76,29 +76,6 @@ getFont :: Builder String
 getFont = Builder $ \ctx bld -> BuilderPartDone ctx bld (ctxFont ctx)
 
 
-fork :: Builder () -> Builder ()
-fork (Builder act) = Builder $ \ctx bld ->
-  case act ctx bld of
-    BuilderPartDone _ bld' _ ->
-      BuilderPartDone ctx bld' ()
-    BuilderPartWaitDraw drawName ctxdBld ->
-      BuilderPartDone ctx (addBuilderWaitDraw drawName ctxdBld bld) ()
-    BuilderPartWaitLink linkName ctxdBld ->
-      BuilderPartDone ctx (addBuilderWaitLink linkName ctxdBld bld) ()
-
-local :: Builder a -> Builder a
-local (Builder act) = Builder $ \ctx bld ->
-  let
-    go = \case
-      BuilderPartDone _ bld' a ->
-        BuilderPartDone ctx bld' a
-      BuilderPartWaitDraw drawName (ContextedBuilder ctxdAct) ->
-        BuilderPartWaitDraw drawName $ ContextedBuilder $ \bld -> go (ctxdAct bld)
-      BuilderPartWaitLink linkName (ContextedBuilder ctxdAct) ->
-        BuilderPartWaitLink linkName $ ContextedBuilder $ \bld -> go (ctxdAct bld)
-  in
-    go (act ctx bld)
-
 name :: String -> Builder ()
 name nextName = Builder $ \ctx bld ->
   BuilderPartDone
@@ -136,10 +113,10 @@ addDraw draw = Builder $ \ctx bld ->
                 case continue bld' of
                   BuilderPartDone ctx'' bld'' _ ->
                     go bld'' otherCtxdBlds
-                  BuilderPartWaitDraw drawName ctxdBld ->
-                    go (addBuilderWaitDraw drawName ctxdBld bld') otherCtxdBlds
-                  BuilderPartWaitLink linkName ctxdBld ->
-                    go (addBuilderWaitLink linkName ctxdBld bld') otherCtxdBlds
+                  BuilderPartWaitDraw drawName bld'' ctxdBld ->
+                    go (addBuilderWaitDraw drawName ctxdBld bld'') otherCtxdBlds
+                  BuilderPartWaitLink linkName bld'' ctxdBld ->
+                    go (addBuilderWaitLink linkName ctxdBld bld'') otherCtxdBlds
 
               go bld' _ =
                 bld'
@@ -167,13 +144,7 @@ addLink link = Builder $ \ctx bld ->
             go bld' ctxdBlds
             where
               go bld' (ContextedBuilder continue : otherCtxdBlds) =
-                case continue bld' of
-                  BuilderPartDone ctx'' bld'' _ ->
-                    go bld'' otherCtxdBlds
-                  BuilderPartWaitDraw drawName ctxdBld ->
-                    go (addBuilderWaitDraw drawName ctxdBld bld') otherCtxdBlds
-                  BuilderPartWaitLink linkName ctxdBld ->
-                    go (addBuilderWaitLink linkName ctxdBld bld') otherCtxdBlds
+                go (suspendBuilderPartWait (continue bld')) otherCtxdBlds
 
               go bld' _ =
                 bld'
