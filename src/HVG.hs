@@ -12,7 +12,7 @@ drawCanvas canvasCSSQuery (Builder drawBuilder) = do
   putStrLn $ "  var canvas = document.querySelector(" ++ canvasCSSQuery ++ ")";
   putStrLn $ "  if( !canvas ) return;"
   putStrLn $ "  var ctx = canvas.getContext('2d');"
-  let (_, _, draw) = drawBuilder initBuilderState initContextState
+  let (_, _, draw) = drawBuilder initContextState initBuilderState
   res <- draw
   putStrLn   "})();"
   return res

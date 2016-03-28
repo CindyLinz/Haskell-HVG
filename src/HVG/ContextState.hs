@@ -11,93 +11,93 @@ import HVG.Type
 --
 
 setTransform :: Matrix -> Builder ()
-setTransform val = Builder $ \bld ctx -> (bld, ctx {ctxTransform = val}, ())
+setTransform val = Builder $ \ctx bld -> (ctx {ctxTransform = val}, bld, ())
 getTransform :: Builder Matrix
-getTransform = Builder $ \bld ctx -> (bld, ctx, ctxTransform ctx)
+getTransform = Builder $ \ctx bld -> (ctx, bld, ctxTransform ctx)
 applyTransform :: Matrix -> Builder ()
-applyTransform val = Builder $ \bld ctx -> (bld, ctx {ctxTransform = val <> ctxTransform ctx}, ())
+applyTransform val = Builder $ \ctx bld -> (ctx {ctxTransform = val <> ctxTransform ctx}, bld, ())
 
 
 setFill :: Maybe String -> Builder ()
-setFill val = Builder $ \bld ctx -> (bld, ctx {ctxFill = val}, ())
+setFill val = Builder $ \ctx bld -> (ctx {ctxFill = val}, bld, ())
 getFill :: Builder (Maybe String)
-getFill = Builder $ \bld ctx -> (bld, ctx, ctxFill ctx)
+getFill = Builder $ \ctx bld -> (ctx, bld, ctxFill ctx)
 
 setStroke :: Maybe String -> Builder ()
-setStroke val = Builder $ \bld ctx -> (bld, ctx {ctxStroke = val}, ())
+setStroke val = Builder $ \ctx bld -> (ctx {ctxStroke = val}, bld, ())
 getStroke :: Builder (Maybe String)
-getStroke = Builder $ \bld ctx -> (bld, ctx, ctxStroke ctx)
+getStroke = Builder $ \ctx bld -> (ctx, bld, ctxStroke ctx)
 
 
 setLineWidth :: Double -> Builder ()
-setLineWidth val = Builder $ \bld ctx -> (bld, ctx {ctxLineWidth = val}, ())
+setLineWidth val = Builder $ \ctx bld -> (ctx {ctxLineWidth = val}, bld, ())
 getLineWidth :: Builder Double
-getLineWidth = Builder $ \bld ctx -> (bld, ctx, ctxLineWidth ctx)
+getLineWidth = Builder $ \ctx bld -> (ctx, bld, ctxLineWidth ctx)
 
 setLineCap :: LineCap -> Builder ()
-setLineCap val = Builder $ \bld ctx -> (bld, ctx {ctxLineCap = val}, ())
+setLineCap val = Builder $ \ctx bld -> (ctx {ctxLineCap = val}, bld, ())
 getLineCap :: Builder LineCap
-getLineCap = Builder $ \bld ctx -> (bld, ctx, ctxLineCap ctx)
+getLineCap = Builder $ \ctx bld -> (ctx, bld, ctxLineCap ctx)
 
 setLineJoin :: LineJoin -> Builder ()
-setLineJoin val = Builder $ \bld ctx -> (bld, ctx {ctxLineJoin = val}, ())
+setLineJoin val = Builder $ \ctx bld -> (ctx {ctxLineJoin = val}, bld, ())
 getLineJoin :: Builder LineJoin
-getLineJoin = Builder $ \bld ctx -> (bld, ctx, ctxLineJoin ctx)
+getLineJoin = Builder $ \ctx bld -> (ctx, bld, ctxLineJoin ctx)
 
 setMiterLimit :: Double -> Builder ()
-setMiterLimit val = Builder $ \bld ctx -> (bld, ctx {ctxMiterLimit = val}, ())
+setMiterLimit val = Builder $ \ctx bld -> (ctx {ctxMiterLimit = val}, bld, ())
 getMiterLimit :: Builder Double
-getMiterLimit = Builder $ \bld ctx -> (bld, ctx, ctxMiterLimit ctx)
+getMiterLimit = Builder $ \ctx bld -> (ctx, bld, ctxMiterLimit ctx)
 
 setLineDash :: [Double] -> Builder ()
-setLineDash val = Builder $ \bld ctx -> (bld, ctx {ctxLineDash = val}, ())
+setLineDash val = Builder $ \ctx bld -> (ctx {ctxLineDash = val}, bld, ())
 getLineDash :: Builder [Double]
-getLineDash = Builder $ \bld ctx -> (bld, ctx, ctxLineDash ctx)
+getLineDash = Builder $ \ctx bld -> (ctx, bld, ctxLineDash ctx)
 
 setLineDashOffset :: Double -> Builder ()
-setLineDashOffset val = Builder $ \bld ctx -> (bld, ctx {ctxLineDashOffset = val}, ())
+setLineDashOffset val = Builder $ \ctx bld -> (ctx {ctxLineDashOffset = val}, bld, ())
 getLineDashOffset :: Builder Double
-getLineDashOffset = Builder $ \bld ctx -> (bld, ctx, ctxLineDashOffset ctx)
+getLineDashOffset = Builder $ \ctx bld -> (ctx, bld, ctxLineDashOffset ctx)
 
 
 setTextAlign :: TextAlign -> Builder ()
-setTextAlign val = Builder $ \bld ctx -> (bld, ctx {ctxTextAlign = val}, ())
+setTextAlign val = Builder $ \ctx bld -> (ctx {ctxTextAlign = val}, bld, ())
 getTextAlign :: Builder TextAlign
-getTextAlign = Builder $ \bld ctx -> (bld, ctx, ctxTextAlign ctx)
+getTextAlign = Builder $ \ctx bld -> (ctx, bld, ctxTextAlign ctx)
 
 setTextBaseline :: TextBaseline -> Builder ()
-setTextBaseline val = Builder $ \bld ctx -> (bld, ctx {ctxTextBaseline = val}, ())
+setTextBaseline val = Builder $ \ctx bld -> (ctx {ctxTextBaseline = val}, bld, ())
 getTextBaseline :: Builder TextBaseline
-getTextBaseline = Builder $ \bld ctx -> (bld, ctx, ctxTextBaseline ctx)
+getTextBaseline = Builder $ \ctx bld -> (ctx, bld, ctxTextBaseline ctx)
 
 setFont :: String -> Builder ()
-setFont val = Builder $ \bld ctx -> (bld, ctx {ctxFont = val}, ())
+setFont val = Builder $ \ctx bld -> (ctx {ctxFont = val}, bld, ())
 getFont :: Builder String
-getFont = Builder $ \bld ctx -> (bld, ctx, ctxFont ctx)
+getFont = Builder $ \ctx bld -> (ctx, bld, ctxFont ctx)
 
 
 local :: Builder a -> Builder a
-local (Builder act) = Builder $ \bld ctx ->
+local (Builder act) = Builder $ \ctx bld ->
   let
-    (bld', _, a) = act bld ctx
+    (_, bld', a) = act ctx bld
   in
-    (bld', ctx, a)
+    (ctx, bld', a)
 
 name :: String -> Builder ()
-name nextName = Builder $ \bld ctx ->
-  ( bld
-  , ctx
+name nextName = Builder $ \ctx bld ->
+  ( ctx
     { ctxNextDrawName = Just nextName
     , ctxNextLinkName = Just nextName
     }
+  , bld
   , ()
   )
 
 addDraw :: Draw -> Builder ()
-addDraw draw = Builder $ \bld ctx ->
+addDraw draw = Builder $ \ctx bld ->
   case ctxNextDrawName ctx of
     Nothing ->
-      (bld, ctx, ())
+      (ctx, bld, ())
 
     Just myName ->
       let
@@ -111,16 +111,16 @@ addDraw draw = Builder $ \bld ctx ->
           Nothing ->
             bld'
           Just (ContextedBuilder continue) ->
-            bld'' where (bld'', _, ()) = continue bld'
+            bld'' where (_, bld'', ()) = continue bld'
 
       in
-        (bld'', ctx {ctxNextDrawName = Nothing}, ())
+        (ctx {ctxNextDrawName = Nothing}, bld'', ())
 
 addLink :: Link -> Builder ()
-addLink link = Builder $ \bld ctx ->
+addLink link = Builder $ \ctx bld ->
   case ctxNextLinkName ctx of
     Nothing ->
-      (bld, ctx, ())
+      (ctx, bld, ())
 
     Just myName ->
       let
@@ -133,10 +133,10 @@ addLink link = Builder $ \bld ctx ->
           Nothing ->
             bld'
           Just (ContextedBuilder continue) ->
-            bld'' where (bld'', _, ()) = continue bld'
+            bld'' where (_, bld'', ()) = continue bld'
 
       in
-        (bld'', ctx {ctxNextLinkName = Nothing}, ())
+        (ctx {ctxNextLinkName = Nothing}, bld'', ())
 
 queryDraw :: String -> Builder ()
 queryDraw drawName = undefined
