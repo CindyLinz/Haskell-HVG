@@ -137,8 +137,8 @@ initContextState = ContextState
 data BuilderState = BuilderState
   { bldNamedDraw :: S.Set String
   , bldNamedLink :: M.Map String Link
-  , bldWaitDraw :: M.Map String [ContextedBuilder ()]
-  , bldWaitLink :: M.Map String [ContextedBuilder ()]
+  , bldWaitDraw :: M.Map String [ContextedWaitDrawBuilder ()]
+  , bldWaitLink :: M.Map String [ContextedWaitLinkBuilder ()]
   , bldDraw :: IO ()
   }
 initBuilderState :: BuilderState
@@ -150,29 +150,29 @@ initBuilderState = BuilderState
   , bldDraw = return ()
   }
 
-addBuilderWaitDraw :: String -> ContextedBuilder () -> BuilderState -> BuilderState
+addBuilderWaitDraw :: String -> ContextedWaitDrawBuilder () -> BuilderState -> BuilderState
 addBuilderWaitDraw drawName ctxdBld bld = bld
   { bldWaitDraw = M.insertWith (++) drawName [ctxdBld] (bldWaitDraw bld)
   }
-addBuilderWaitLink :: String -> ContextedBuilder () -> BuilderState -> BuilderState
+addBuilderWaitLink :: String -> ContextedWaitLinkBuilder () -> BuilderState -> BuilderState
 addBuilderWaitLink linkName ctxdBld bld = bld
   { bldWaitLink = M.insertWith (++) linkName [ctxdBld] (bldWaitLink bld)
   }
 
 data BuilderPart a
   = BuilderPartDone ContextState BuilderState a
-  | BuilderPartWaitDraw String BuilderState (ContextedBuilder a)
-  | BuilderPartWaitLink String BuilderState (ContextedBuilder a)
+  | BuilderPartWaitDraw String BuilderState (ContextedWaitDrawBuilder a)
+  | BuilderPartWaitLink String BuilderState (ContextedWaitLinkBuilder a)
 
 mapBuilderPart :: (ContextState -> BuilderState -> a -> BuilderPart b) -> BuilderPart a -> BuilderPart b
 mapBuilderPart f = go
   where
   go = \case
     BuilderPartDone ctx bld a -> f ctx bld a
-    BuilderPartWaitDraw drawName bld (ContextedBuilder ctxdAAct) ->
-      BuilderPartWaitDraw drawName bld $ ContextedBuilder $ \bld' -> go (ctxdAAct bld')
-    BuilderPartWaitLink linkName bld (ContextedBuilder ctxdAAct) ->
-      BuilderPartWaitLink linkName bld $ ContextedBuilder $ \bld' -> go (ctxdAAct bld')
+    BuilderPartWaitDraw drawName bld (ContextedWaitDrawBuilder ctxdAAct) ->
+      BuilderPartWaitDraw drawName bld $ ContextedWaitDrawBuilder $ \bld' -> go (ctxdAAct bld')
+    BuilderPartWaitLink linkName bld (ContextedWaitLinkBuilder ctxdAAct) ->
+      BuilderPartWaitLink linkName bld $ ContextedWaitLinkBuilder $ \link bld' -> go (ctxdAAct link bld')
 
 forBuilderPart :: BuilderPart a -> (ContextState -> BuilderState -> a -> BuilderPart b) -> BuilderPart b
 forBuilderPart = flip mapBuilderPart
@@ -187,7 +187,8 @@ suspendBuilderPartWait = \case
     addBuilderWaitLink linkName ctxdBld bld'
 
 newtype Builder a = Builder (ContextState -> BuilderState -> BuilderPart a)
-newtype ContextedBuilder a = ContextedBuilder (BuilderState -> BuilderPart a)
+newtype ContextedWaitDrawBuilder a = ContextedWaitDrawBuilder (BuilderState -> BuilderPart a)
+newtype ContextedWaitLinkBuilder a = ContextedWaitLinkBuilder (Link -> BuilderState -> BuilderPart a)
 
 fork :: Builder () -> Builder ()
 fork (Builder act) = Builder $ \ctx bld ->
@@ -200,9 +201,12 @@ local (Builder act) = Builder $ \ctx bld ->
 instance Functor Builder where
   fmap f (Builder act) = Builder $ \ctx bld ->
     fmap f (act ctx bld)
-instance Functor ContextedBuilder where
-  fmap f (ContextedBuilder act) = ContextedBuilder $ \bld ->
+instance Functor ContextedWaitDrawBuilder where
+  fmap f (ContextedWaitDrawBuilder act) = ContextedWaitDrawBuilder $ \bld ->
     fmap f (act bld)
+instance Functor ContextedWaitLinkBuilder where
+  fmap f (ContextedWaitLinkBuilder act) = ContextedWaitLinkBuilder $ \link bld ->
+    fmap f (act link bld)
 instance Functor BuilderPart where
   fmap f = \case
     BuilderPartDone ctx bld a -> BuilderPartDone ctx bld (f a)

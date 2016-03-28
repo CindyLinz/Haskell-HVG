@@ -109,14 +109,8 @@ addDraw draw = Builder $ \ctx bld ->
           Just ctxdBlds ->
             go bld' ctxdBlds
             where
-              go bld' (ContextedBuilder continue : otherCtxdBlds) =
-                case continue bld' of
-                  BuilderPartDone ctx'' bld'' _ ->
-                    go bld'' otherCtxdBlds
-                  BuilderPartWaitDraw drawName bld'' ctxdBld ->
-                    go (addBuilderWaitDraw drawName ctxdBld bld'') otherCtxdBlds
-                  BuilderPartWaitLink linkName bld'' ctxdBld ->
-                    go (addBuilderWaitLink linkName ctxdBld bld'') otherCtxdBlds
+              go bld' (ContextedWaitDrawBuilder continue : otherCtxdBlds) =
+                go (suspendBuilderPartWait (continue bld')) otherCtxdBlds
 
               go bld' _ =
                 bld'
@@ -143,8 +137,8 @@ addLink link = Builder $ \ctx bld ->
           Just ctxdBlds ->
             go bld' ctxdBlds
             where
-              go bld' (ContextedBuilder continue : otherCtxdBlds) =
-                go (suspendBuilderPartWait (continue bld')) otherCtxdBlds
+              go bld' (ContextedWaitLinkBuilder continue : otherCtxdBlds) =
+                go (suspendBuilderPartWait (continue link bld')) otherCtxdBlds
 
               go bld' _ =
                 bld'
@@ -153,10 +147,21 @@ addLink link = Builder $ \ctx bld ->
         BuilderPartDone ctx{ctxNextLinkName = Nothing} bld'' ()
 
 queryDraw :: String -> Builder ()
-queryDraw drawName = undefined
+queryDraw drawName = Builder $ \ctx bld ->
+  if S.member drawName (bldNamedDraw bld) then
+    BuilderPartDone ctx bld ()
+  else
+    BuilderPartWaitDraw drawName bld $ ContextedWaitDrawBuilder $ \bld' ->
+      BuilderPartDone ctx bld' ()
 
 queryLink :: String -> Builder Link
-queryLink linkName = undefined
+queryLink linkName = Builder $ \ctx bld ->
+  case M.lookup linkName (bldNamedLink bld) of
+    Just link ->
+      BuilderPartDone ctx bld link
+    Nothing ->
+      BuilderPartWaitLink linkName bld $ ContextedWaitLinkBuilder $ \link bld' ->
+        BuilderPartDone ctx bld' link
 
 --rotate :: Double -> Builder ()
 --rotate theta = applyTransform (
