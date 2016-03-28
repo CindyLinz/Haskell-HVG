@@ -18,8 +18,10 @@ library
   exposed-modules:     HVG
                      , HVG.Type
                      , HVG.Context2D
+                     , HVG.ContextState
   other-modules:       
   build-depends:       base >= 4.7 && < 5
+                     , containers ==0.5.*
   default-language:    Haskell2010
   default-extensions:  GADTs
                      , LambdaCase

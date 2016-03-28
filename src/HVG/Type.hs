@@ -1,12 +1,11 @@
 module HVG.Type where
 
 import Data.Monoid
+import qualified Data.Map.Strict as M
+import qualified Data.Set as S
 
-class Drawable a where
-  draw :: a -> Context ()
-
-class Linkable a where
-  linkPoints :: a -> Context [LinkPoint]
+type Draw = IO ()
+type Link = [LinkPoint]
 
 class StringValue a where
   strValue :: a -> String
@@ -109,9 +108,12 @@ data ContextState = ContextState
   , ctxTextAlign :: TextAlign
   , ctxTextBaseline :: TextBaseline
   , ctxFont :: String
+
+  , ctxNextDrawName :: Maybe String
+  , ctxNextLinkName :: Maybe String
   }
-initContext :: ContextState
-initContext = ContextState
+initContextState :: ContextState
+initContextState = ContextState
   { ctxTransform = identityMatrix
 
   , ctxFill = Nothing
@@ -127,33 +129,53 @@ initContext = ContextState
   , ctxTextAlign = TextStart
   , ctxTextBaseline = TextAlphabetic
   , ctxFont = "10px sans-serif"
+
+  , ctxNextDrawName = Nothing
+  , ctxNextLinkName = Nothing
   }
 
-data Context a = Context (ContextState -> (ContextState, a))
+data BuilderState = BuilderState
+  { bldNamedDraw :: S.Set String
+  , bldNamedLink :: M.Map String Link
+  , bldWaitDraw :: M.Map String (ContextedBuilder ())
+  , bldWaitLink :: M.Map String (ContextedBuilder ())
+  , bldDraw :: IO ()
+  }
+initBuilderState :: BuilderState
+initBuilderState = BuilderState
+  { bldNamedDraw = S.empty
+  , bldNamedLink = M.empty
+  , bldWaitDraw = M.empty
+  , bldWaitLink = M.empty
+  , bldDraw = return ()
+  }
 
-instance Functor Context where
-  fmap f (Context act) = Context $ \ctx ->
-    let
-      (ctx', a) = act ctx
-    in
-      (ctx', f a)
+data Builder a = Builder (BuilderState -> ContextState -> (BuilderState, ContextState, a))
+data ContextedBuilder a = ContextedBuilder (BuilderState -> (BuilderState, ContextState, a))
 
-instance Applicative Context where
-  pure a = Context $ \ctx -> (ctx, a)
-  Context fAct <*> Context aAct = Context $ \ctx ->
+instance Functor Builder where
+  fmap f (Builder act) = Builder $ \bld ctx ->
     let
-      (ctx', f) = fAct ctx
-      (ctx'', a) = aAct ctx'
+      (bld', ctx', a) = act bld ctx
     in
-      (ctx'', f a)
+      (bld', ctx', f a)
 
-instance Monad Context where
-  Context mAct >>= f = Context $ \ctx ->
+instance Applicative Builder where
+  pure a = Builder $ \bld ctx -> (bld, ctx, a)
+  Builder fAct <*> Builder aAct = Builder $ \bld ctx ->
     let
-      (ctx', a) = mAct ctx
-      Context fAct = f a
+      (bld', ctx', f) = fAct bld ctx
+      (bld'', ctx'', a) = aAct bld' ctx'
     in
-      fAct ctx'
+      (bld'', ctx'', f a)
+
+instance Monad Builder where
+  Builder mAct >>= f = Builder $ \bld ctx ->
+    let
+      (bld', ctx', a) = mAct bld ctx
+      Builder fAct = f a
+    in
+      fAct bld' ctx'
 
 data Matrix = Matrix
   Double Double Double
@@ -162,6 +184,21 @@ identityMatrix :: Matrix
 identityMatrix = Matrix
   1 0 0
   0 1 0
+translateMatrix :: Double -> Double -> Matrix
+translateMatrix x y = Matrix
+  1 0 x
+  0 1 y
+scaleMatrix :: Double -> Double -> Matrix
+scaleMatrix x y = Matrix
+  x 0 0
+  0 y 0
+rotateMatrix :: Double -> Matrix
+rotateMatrix theta = Matrix
+  c (-s) 0
+  s c 0
+  where
+    c = cos theta
+    s = sin theta
 
 instance Monoid Matrix where
   mempty = identityMatrix
