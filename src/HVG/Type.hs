@@ -94,6 +94,7 @@ data RotateDirection
 
 data ContextState = ContextState
   { ctxTransform :: Matrix
+  , ctxSize :: Size
 
   , ctxFill :: Maybe String
   , ctxStroke :: Maybe String
@@ -112,9 +113,10 @@ data ContextState = ContextState
   , ctxNextDrawName :: Maybe String
   , ctxNextLinkName :: Maybe String
   }
-initContextState :: ContextState
-initContextState = ContextState
+initContextState :: Size -> ContextState
+initContextState size = ContextState
   { ctxTransform = identityMatrix
+  , ctxSize = size
 
   , ctxFill = Nothing
   , ctxStroke = Nothing
@@ -265,11 +267,32 @@ instance Monoid Matrix where
         (a11*b11 + a12*b21) (a11*b12 + a12*b22) (a11*b13 + a12*b23 + a13)
         (a21*b11 + a22*b21) (a21*b12 + a22*b22) (a21*b13 + a22*b23 + a23)
 
-data Point = Point Double Double
-data Size = Size Double Double
+data Point = Point Double Double deriving Show
+data Size = Size Double Double deriving Show
 
-data LinkPoint = LinkPoint Point Cost
+data LinkPoint = LinkPoint Point Cost deriving Show
 type Cost = Double
+
+pointDistance :: Point -> Point -> Double
+pointDistance (Point x1 y1) (Point x2 y2) = sqrt ((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2))
+
+movePoint :: Matrix -> Point -> Point
+movePoint
+  ( Matrix
+    a11 a12 a13
+    a21 a22 a23
+  )
+  ( Point x y )
+  =
+    Point
+      (a11*x + a12*y + a13)
+      (a21*x + a22*y + a23)
+
+interpolatePoint :: Point -> Point -> Double -> Point
+interpolatePoint (Point x1 y1) (Point x2 y2) ratio =
+  Point
+    (x1 + (x2 - x1) * ratio)
+    (y1 + (y2 - y1) * ratio)
 
 --data LinkLine :: * where
   --LinkLine :: (Linkable a, Linkable b) => a -> b -> LinkLine

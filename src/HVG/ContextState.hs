@@ -17,6 +17,11 @@ getTransform = Builder $ \ctx bld -> BuilderPartDone ctx bld (ctxTransform ctx)
 applyTransform :: Matrix -> Builder ()
 applyTransform val = Builder $ \ctx bld -> BuilderPartDone ctx{ctxTransform = val <> ctxTransform ctx} bld ()
 
+setSize :: Size -> Builder ()
+setSize val = Builder $ \ctx bld -> BuilderPartDone ctx{ctxSize = val} bld ()
+getSize :: Builder Size
+getSize = Builder $ \ctx bld -> BuilderPartDone ctx bld (ctxSize ctx)
+
 
 setFill :: Maybe String -> Builder ()
 setFill val = Builder $ \ctx bld -> BuilderPartDone ctx{ctxFill = val} bld ()
@@ -160,6 +165,7 @@ queryLink linkName = Builder $ \ctx bld ->
     Just link ->
       BuilderPartDone ctx bld link
     Nothing ->
+      --error $ linkName ++ " " ++ show (map fst $ M.toList $ bldNamedLink bld)
       BuilderPartWaitLink linkName bld $ ContextedWaitLinkBuilder $ \link bld' ->
         BuilderPartDone ctx bld' link
 
