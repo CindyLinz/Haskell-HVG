@@ -5,6 +5,7 @@ import HVG.Context2D
 import HVG.ContextState
 
 import Control.Monad
+import Data.Monoid
 
 {- sepSeries
   0
@@ -59,6 +60,55 @@ box x y w h level bodies = local $ do
     body
     applyTransform (translateMatrix 0 (h / fromIntegral level))
 
+ellipse :: Double -> Double -> Double -> Double -> Builder () -> Builder ()
+ellipse x y w h body = local $ do
+  applyTransform (translateMatrix x y)
+  tran <- getTransform
+  let centerTran = tran <> translateMatrix (w/2) (h/2)
+
+  setSize (Size w h)
+
+  addDraw $ do
+    strokeStyle "#000"
+    transform centerTran
+
+    lineWidth 3
+
+    beginPath
+    moveTo (Point 0 (h/2))
+    bezierCurveTo
+      (Point (0.552284749*w/2) (h/2))
+      (Point (w/2) (0.552284749*h/2))
+      (Point (w/2) 0)
+    bezierCurveTo
+      (Point (w/2) (-0.552284749*h/2))
+      (Point (0.552284749*w/2) (-h/2))
+      (Point 0 (-h/2))
+    bezierCurveTo
+      (Point (-0.552284749*w/2) (-h/2))
+      (Point (-w/2) (-0.552284749*h/2))
+      (Point (-w/2) 0)
+    bezierCurveTo
+      (Point (-w/2) (0.552284749*h/2))
+      (Point (-0.552284749*w/2) (h/2))
+      (Point 0 (h/2))
+    stroke
+
+  let
+    sepToPoint ratio =
+      let
+        arg = ratio * 2 * 3.14159265358979323846
+      in
+        movePoint
+          centerTran
+          ( Point
+            (w/2 * cos arg)
+            (h/2 * sin arg)
+          )
+    link = map (\p -> LinkPoint p 0) $ map sepToPoint sepSeries
+  addLink link
+
+  body
 
 textTop :: String -> Builder ()
 textTop str = local $ do
@@ -99,7 +149,7 @@ link aName bName = fork $ do
         ((Point 0 0, Point 0 0), 1/0)
         [((a, b), aCost + pointDistance a b + bCost) | LinkPoint a aCost <- take n aLink, LinkPoint b bCost <- take n bLink]
 
-    (aEnd, bEnd) = bestLinkPair 256 aLink bLink
+    (aEnd, bEnd) = bestLinkPair 64 aLink bLink
 
 
   addDraw $ do
