@@ -15,7 +15,7 @@ setTransform val = Builder $ \ctx bld -> BuilderPartDone ctx{ctxTransform = val}
 getTransform :: Builder Matrix
 getTransform = Builder $ \ctx bld -> BuilderPartDone ctx bld (ctxTransform ctx)
 applyTransform :: Matrix -> Builder ()
-applyTransform val = Builder $ \ctx bld -> BuilderPartDone ctx{ctxTransform = val <> ctxTransform ctx} bld ()
+applyTransform val = Builder $ \ctx bld -> BuilderPartDone ctx{ctxTransform = ctxTransform ctx <> val} bld ()
 
 setSize :: Size -> Builder ()
 setSize val = Builder $ \ctx bld -> BuilderPartDone ctx{ctxSize = val} bld ()

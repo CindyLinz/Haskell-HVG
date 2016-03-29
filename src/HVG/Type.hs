@@ -194,11 +194,15 @@ newtype ContextedWaitLinkBuilder a = ContextedWaitLinkBuilder (Link -> BuilderSt
 
 fork :: Builder () -> Builder ()
 fork (Builder act) = Builder $ \ctx bld ->
-  BuilderPartDone ctx (suspendBuilderPartWait (act ctx bld)) ()
+  BuilderPartDone
+    ctx{ctxNextDrawName=Nothing, ctxNextLinkName=Nothing}
+    (suspendBuilderPartWait (act ctx bld))
+    ()
 
 local :: Builder a -> Builder a
 local (Builder act) = Builder $ \ctx bld ->
-  forBuilderPart (act ctx bld) $ \_ bld' a -> BuilderPartDone ctx bld' a
+  forBuilderPart (act ctx bld) $ \_ bld' a ->
+    BuilderPartDone ctx{ctxNextDrawName=Nothing, ctxNextLinkName=Nothing} bld' a
 
 instance Functor Builder where
   fmap f (Builder act) = Builder $ \ctx bld ->
