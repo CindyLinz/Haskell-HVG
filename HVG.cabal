@@ -28,7 +28,7 @@ library
                      , KindSignatures
 
 executable HVG-test
-  hs-source-dirs:      app
+  hs-source-dirs:      test
   main-is:             Main.hs
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   build-depends:       base
@@ -37,10 +37,21 @@ executable HVG-test
                      , Entity
   default-language:    Haskell2010
 
+executable HVG
+  hs-source-dirs:      app
+  main-is:             Main.hs
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  build-depends:       base
+                     , HVG
+                     , ghc ==7.10.3
+                     , ghc-paths ==0.1.*
+  other-modules:       
+  default-language:    Haskell2010
+
 -- test-suite HVG-test
 --   type:                exitcode-stdio-1.0
---   hs-source-dirs:      test
---   main-is:             Spec.hs
+--   hs-source-dirs:      app
+--   main-is:             Main.hs
 --   build-depends:       base
 --                      , HVG
 --   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
