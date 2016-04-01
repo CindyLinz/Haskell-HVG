@@ -21,25 +21,11 @@ sepSeries = 0 : inners where
   halfs = map (/ 2) inners
   mix (a:as) (b:bs) = a : b : mix as bs
 
-box :: Double -> Double -> Double -> Double -> Int -> [Builder ()] -> Builder ()
+box :: Double -> Double -> Double -> Double -> Int -> [Builder Link ()] -> Builder Link ()
 box x y w h level bodies = local $ do
   applyTransform (translateMatrix x y)
   setSize (Size w h)
   tran <- getTransform
-
-  addDraw $ do
-    strokeStyle "#000"
-    transform tran
-
-    lineWidth 2
-    forM_ [1 .. level - 1] $ \i -> do
-      beginPath
-      moveTo (Point 0 (h / fromIntegral level * fromIntegral i))
-      lineTo (Point w (h / fromIntegral level * fromIntegral i))
-      stroke
-
-    lineWidth 3
-    strokeRect (Point 0 0) (Size w h)
 
   let
     center = Point (w / 2) (h / 2)
@@ -53,14 +39,27 @@ box x y w h level bodies = local $ do
       LinkPoint
         (movePoint tran p)
         (pointDistance center p)
-  addLink link
+
+  addEntity link $ do
+    strokeStyle "#000"
+    transform tran
+
+    lineWidth 2
+    forM_ [1 .. level - 1] $ \i -> do
+      beginPath
+      moveTo (Point 0 (h / fromIntegral level * fromIntegral i))
+      lineTo (Point w (h / fromIntegral level * fromIntegral i))
+      stroke
+
+    lineWidth 3
+    strokeRect (Point 0 0) (Size w h)
 
   forM_ (zip [1..] bodies) $ \(i, body) -> do
     setSize (Size w (h / fromIntegral level))
     body
     applyTransform (translateMatrix 0 (h / fromIntegral level))
 
-ellipse :: Double -> Double -> Double -> Double -> Builder () -> Builder ()
+ellipse :: Double -> Double -> Double -> Double -> Builder Link () -> Builder Link ()
 ellipse x y w h body = local $ do
   applyTransform (translateMatrix x y)
   tran <- getTransform
@@ -68,7 +67,20 @@ ellipse x y w h body = local $ do
 
   setSize (Size w h)
 
-  addDraw $ do
+  let
+    sepToPoint ratio =
+      let
+        arg = ratio * 2 * 3.14159265358979323846
+      in
+        movePoint
+          centerTran
+          ( Point
+            (w/2 * cos arg)
+            (h/2 * sin arg)
+          )
+    link = map (\p -> LinkPoint p 0) $ map sepToPoint sepSeries
+
+  addEntity link $ do
     strokeStyle "#000"
     transform centerTran
 
@@ -94,28 +106,14 @@ ellipse x y w h body = local $ do
       (Point 0 (h/2))
     stroke
 
-  let
-    sepToPoint ratio =
-      let
-        arg = ratio * 2 * 3.14159265358979323846
-      in
-        movePoint
-          centerTran
-          ( Point
-            (w/2 * cos arg)
-            (h/2 * sin arg)
-          )
-    link = map (\p -> LinkPoint p 0) $ map sepToPoint sepSeries
-  addLink link
-
   body
 
-textTop :: String -> Builder ()
+textTop :: String -> Builder Link ()
 textTop str = local $ do
   tran <- getTransform
   Size w h <- getSize
 
-  addDraw $ do
+  addEntity [] $ do
     transform tran
     textBaseline TextMiddle
     textAlign TextCenter
@@ -124,12 +122,12 @@ textTop str = local $ do
     fillStyle "#000"
     fillText str (Point (w / 2) 15) Nothing
 
-text :: String -> Builder ()
+text :: String -> Builder Link ()
 text str = local $ do
   tran <- getTransform
   Size w h <- getSize
 
-  addDraw $ do
+  addEntity [] $ do
     transform tran
     textBaseline TextMiddle
     textAlign TextCenter
@@ -138,10 +136,10 @@ text str = local $ do
     fillStyle "#000"
     fillText str (Point (w / 2) (h / 2)) Nothing
 
-link :: String -> String -> Builder ()
+link :: String -> String -> Builder Link ()
 link aName bName = fork $ do
-  aLink <- queryLink aName
-  bLink <- queryLink bName
+  aLink <- queryInfo aName
+  bLink <- queryInfo bName
   let
     bestLinkPair n aLink bLink =
       fst $ foldl
@@ -152,7 +150,7 @@ link aName bName = fork $ do
     (aEnd, bEnd) = bestLinkPair 64 aLink bLink
 
 
-  addDraw $ do
+  addEntity [LinkPoint (interpolatePoint aEnd bEnd 0.5) 0] $ do
     transform identityMatrix
     strokeStyle "#000"
 
@@ -162,6 +160,3 @@ link aName bName = fork $ do
     moveTo aEnd
     lineTo bEnd
     stroke
-
-  addLink [LinkPoint (interpolatePoint aEnd bEnd 0.5) 0]
-

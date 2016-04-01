@@ -8,7 +8,7 @@ import qualified Data.Map.Strict as M
 import HVG.Type
 import HVG.Context2D
 
-drawCanvas :: String -> Size -> Builder () -> IO ()
+drawCanvas :: String -> Size -> Builder info () -> IO ()
 drawCanvas canvasCSSQuery size (Builder drawBuilder) = do
   putStrLn   "(function(canvas){"
   putStrLn   "  if( !document ) return;"
@@ -17,14 +17,10 @@ drawCanvas canvasCSSQuery size (Builder drawBuilder) = do
   putStrLn $ "  var ctx = canvas.getContext('2d');"
   case drawBuilder (initContextState size) initBuilderState of
     BuilderPartDone _ bld _ -> do
-      forM_ (M.toList (bldWaitDraw bld)) $ \(drawName, _) ->
-        putStrLn $ "  console.warn('wait no draw: ' + " ++ show drawName ++ ")"
-      forM_ (M.toList (bldWaitLink bld)) $ \(linkName, _) ->
-        putStrLn $ "  console.warn('wait no link: ' + " ++ show linkName ++ ")"
+      forM_ (M.toList (bldWaitInfo bld)) $ \(infoName, _) ->
+        putStrLn $ "  console.warn('wait no info: ' + " ++ show infoName ++ ")"
       bldDraw bld
-    BuilderPartWaitDraw drawName _ _ ->
-      putStrLn $ "  console.warn('wait no link: ' + " ++ show drawName ++ ")"
-    BuilderPartWaitLink linkName _ _ ->
-      putStrLn $ "  console.warn('wait no draw: ' + " ++ show linkName ++ ")"
+    BuilderPartWaitInfo infoName _ _ ->
+      putStrLn $ "  console.warn('wait no draw: ' + " ++ show infoName ++ ")"
   putStrLn   "})();"
 
