@@ -3,6 +3,8 @@ module Main where
 import System.Environment (getArgs)
 import Control.Monad
 import Control.Exception
+import Data.Functor
+import Unsafe.Coerce
 
 import GHC
 import GHC.Paths (libdir)
@@ -16,7 +18,7 @@ main = do
   args <- getArgs
 
   defaultErrorHandler defaultFatalMessager defaultFlushOut $ do
-    runGhc (Just libdir) $ do
+    draw <- runGhc (Just libdir) $ do
       dflags <- getSessionDynFlags
       setSessionDynFlags $ dflags
         { hscTarget = HscInterpreted
@@ -28,9 +30,11 @@ main = do
       load LoadAllTargets
       setContext [IIModule $ mkModuleName "Main"]
 
-      res <- runStmt "main" RunToCompletion
-      case res of
-        RunException e -> throw e
-        _ -> return ()
+      unsafeCoerce <$> compileExpr "main" :: Ghc (IO ())
+    draw
+--      res <- runStmt "main" RunToCompletion
+--      case res of
+--        RunException e -> throw e
+--        _ -> return ()
 
   return ()
