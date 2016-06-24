@@ -232,6 +232,7 @@ addInfo info draw = Builder $ \nextName ctx bld ->
         bld' = bld
           { bldNamedInfo = M.insert myName info (bldNamedInfo bld)
           , bldWaitInfo = M.delete myName (bldWaitInfo bld)
+          , bldDraw = bldDraw bld >> draw
           }
 
         bld'' = case M.lookup myName (bldWaitInfo bld) of
