@@ -108,8 +108,6 @@ data ContextState = ContextState
   , ctxTextAlign :: TextAlign
   , ctxTextBaseline :: TextBaseline
   , ctxFont :: String
-
-  , ctxNextInfoName :: Maybe String
   }
 initContextState :: Size -> ContextState
 initContextState size = ContextState
@@ -129,88 +127,87 @@ initContextState size = ContextState
   , ctxTextAlign = TextStart
   , ctxTextBaseline = TextAlphabetic
   , ctxFont = "10px sans-serif"
-
-  , ctxNextInfoName = Nothing
   }
 
-data BuilderState info = BuilderState
+data BuilderState info ctx = BuilderState
   { bldNamedInfo :: M.Map String info
-  , bldWaitInfo :: M.Map String [ContextedWaitInfoBuilder info ()]
+  , bldWaitInfo :: M.Map String [ContextedWaitInfoBuilder info ctx ()]
   , bldDraw :: IO ()
   }
-initBuilderState :: BuilderState info
+initBuilderState :: BuilderState info ctx
 initBuilderState = BuilderState
   { bldNamedInfo = M.empty
   , bldWaitInfo = M.empty
   , bldDraw = return ()
   }
 
-addBuilderWaitInfo :: String -> ContextedWaitInfoBuilder info () -> BuilderState info -> BuilderState info
+addBuilderWaitInfo :: String -> ContextedWaitInfoBuilder info ctx () -> BuilderState info ctx -> BuilderState info ctx
 addBuilderWaitInfo infoName ctxdBld bld = bld
   { bldWaitInfo = M.insertWith (++) infoName [ctxdBld] (bldWaitInfo bld)
   }
 
-data BuilderPart info a
-  = BuilderPartDone ContextState (BuilderState info) a
-  | BuilderPartWaitInfo String (BuilderState info) (ContextedWaitInfoBuilder info a)
+data BuilderPart info ctx a
+  = BuilderPartDone (Maybe String) ctx (BuilderState info ctx) a
+  | BuilderPartWaitInfo String (BuilderState info ctx) (ContextedWaitInfoBuilder info ctx a)
 
-mapBuilderPart :: (ContextState -> BuilderState info -> a -> BuilderPart info b) -> BuilderPart info a -> BuilderPart info b
+mapBuilderPart :: (Maybe String -> ctx -> BuilderState info ctx -> a -> BuilderPart info ctx b) -> BuilderPart info ctx a -> BuilderPart info ctx b
 mapBuilderPart f = go
   where
   go = \case
-    BuilderPartDone ctx bld a -> f ctx bld a
+    BuilderPartDone nextName ctx bld a -> f nextName ctx bld a
     BuilderPartWaitInfo infoName bld (ContextedWaitInfoBuilder ctxdAAct) ->
       BuilderPartWaitInfo infoName bld $ ContextedWaitInfoBuilder $ \link bld' -> go (ctxdAAct link bld')
 
-forBuilderPart :: BuilderPart info a -> (ContextState -> BuilderState info -> a -> BuilderPart info b) -> BuilderPart info b
+forBuilderPart :: BuilderPart info ctx a -> (Maybe String -> ctx -> BuilderState info ctx -> a -> BuilderPart info ctx b) -> BuilderPart info ctx b
 forBuilderPart = flip mapBuilderPart
 
-suspendBuilderPartWait :: BuilderPart info () -> BuilderState info
+suspendBuilderPartWait :: BuilderPart info ctx () -> BuilderState info ctx
 suspendBuilderPartWait = \case
-  BuilderPartDone _ bld' _ ->
+  BuilderPartDone _ _ bld' _ ->
     bld'
   BuilderPartWaitInfo infoName bld' ctxdBld ->
     addBuilderWaitInfo infoName ctxdBld bld'
 
-newtype Builder info a = Builder (ContextState -> BuilderState info -> BuilderPart info a)
-newtype ContextedWaitInfoBuilder info a = ContextedWaitInfoBuilder (info -> BuilderState info -> BuilderPart info a)
+newtype Builder info ctx a = Builder (Maybe String -> ctx -> BuilderState info ctx -> BuilderPart info ctx a)
+newtype ContextedWaitInfoBuilder info ctx a = ContextedWaitInfoBuilder (info -> BuilderState info ctx -> BuilderPart info ctx a)
 
-fork :: Builder info () -> Builder info ()
-fork (Builder act) = Builder $ \ctx bld ->
+fork :: Builder info ctx () -> Builder info ctx ()
+fork (Builder act) = Builder $ \nextName ctx bld ->
   BuilderPartDone
-    ctx{ctxNextInfoName=Nothing}
-    (suspendBuilderPartWait (act ctx bld))
+    Nothing
+    ctx
+    (suspendBuilderPartWait (act nextName ctx bld))
     ()
 
-local :: Builder info a -> Builder info a
-local (Builder act) = Builder $ \ctx bld ->
-  forBuilderPart (act ctx bld) $ \_ bld' a ->
-    BuilderPartDone ctx{ctxNextInfoName=Nothing} bld' a
+local :: Builder info ctx a -> Builder info ctx a
+local (Builder act) = Builder $ \nextName ctx bld ->
+  forBuilderPart (act nextName ctx bld) $ \_ _ bld' a ->
+    BuilderPartDone Nothing ctx bld' a
 
-instance Functor (Builder info) where
-  fmap f (Builder act) = Builder $ \ctx bld ->
-    fmap f (act ctx bld)
-instance Functor (ContextedWaitInfoBuilder info) where
+instance Functor (Builder info ctx) where
+  fmap f (Builder act) = Builder $ \nextName ctx bld ->
+    fmap f (act nextName ctx bld)
+instance Functor (ContextedWaitInfoBuilder info ctx) where
   fmap f (ContextedWaitInfoBuilder act) = ContextedWaitInfoBuilder $ \link bld ->
     fmap f (act link bld)
-instance Functor (BuilderPart info) where
+instance Functor (BuilderPart info ctx) where
   fmap f = \case
-    BuilderPartDone ctx bld a -> BuilderPartDone ctx bld (f a)
+    BuilderPartDone nextName ctx bld a -> BuilderPartDone nextName ctx bld (f a)
     BuilderPartWaitInfo infoName bld ctxdBuilder -> BuilderPartWaitInfo infoName bld (fmap f ctxdBuilder)
 
-instance Applicative (Builder info) where
-  pure a = Builder $ \ctx bld -> BuilderPartDone ctx bld a
-  Builder fAct <*> Builder aAct = Builder $ \ctx bld ->
-    forBuilderPart (fAct ctx bld) $ \ctx' bld' f ->
-      f <$> aAct ctx' bld'
+instance Applicative (Builder info ctx) where
+  pure a = Builder $ \nextName ctx bld -> BuilderPartDone nextName ctx bld a
+  Builder fAct <*> Builder aAct = Builder $ \nextName ctx bld ->
+    forBuilderPart (fAct nextName ctx bld) $ \nextName' ctx' bld' f ->
+      f <$> aAct nextName' ctx' bld'
 
-instance Monad (Builder info) where
-  Builder mAct >>= f = Builder $ \ctx bld ->
-    forBuilderPart (mAct ctx bld) $ \ctx' bld' a ->
+instance Monad (Builder info ctx) where
+  Builder mAct >>= f = Builder $ \nextName ctx bld ->
+    forBuilderPart (mAct nextName ctx bld) $ \nextName' ctx' bld' a ->
       let
         Builder fAct = f a
       in
-        fAct ctx' bld'
+        fAct nextName' ctx' bld'
 
 data Matrix = Matrix
   Double Double Double
