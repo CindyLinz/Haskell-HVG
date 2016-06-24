@@ -217,14 +217,22 @@ name nextName = Builder $ \nextName' ctx bld ->
     bld
     ()
 
-addInfo :: info -> Draw -> Builder info ContextState ()
-addInfo info draw = Builder $ \nextName ctx bld ->
+addDraw :: Draw -> Builder info ContextState ()
+addDraw draw = Builder $ \nextName ctx bld ->
+  BuilderPartDone
+    nextName
+    ctx
+    bld{ bldDraw = bldDraw bld >> draw }
+    ()
+
+addInfo :: info -> Builder info ContextState ()
+addInfo info = Builder $ \nextName ctx bld ->
   case nextName of
     Nothing ->
       BuilderPartDone
         nextName
         ctx
-        bld{ bldDraw = bldDraw bld >> draw }
+        bld
         ()
 
     Just myName ->
@@ -232,7 +240,6 @@ addInfo info draw = Builder $ \nextName ctx bld ->
         bld' = bld
           { bldNamedInfo = M.insert myName info (bldNamedInfo bld)
           , bldWaitInfo = M.delete myName (bldWaitInfo bld)
-          , bldDraw = bldDraw bld >> draw
           }
 
         bld'' = case M.lookup myName (bldWaitInfo bld) of

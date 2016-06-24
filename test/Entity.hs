@@ -40,7 +40,8 @@ box x y w h level bodies = local $ do
         (movePoint tran p)
         (pointDistance center p)
 
-  addInfo link $ do
+  addInfo link
+  addDraw $ do
     strokeStyle "#000"
     transform tran
 
@@ -80,7 +81,8 @@ ellipse x y w h body = local $ do
           )
     link = map (\p -> LinkPoint p 0) $ map sepToPoint sepSeries
 
-  addInfo link $ do
+  addInfo link
+  addDraw $ do
     strokeStyle "#000"
     transform centerTran
 
@@ -113,7 +115,8 @@ textTop str = local $ do
   tran <- getTransform
   Size w h <- getSize
 
-  addInfo [] $ do
+  addInfo []
+  addDraw $ do
     transform tran
     textBaseline TextMiddle
     textAlign TextCenter
@@ -127,7 +130,8 @@ text str = local $ do
   tran <- getTransform
   Size w h <- getSize
 
-  addInfo [] $ do
+  addInfo []
+  addDraw $ do
     transform tran
     textBaseline TextMiddle
     textAlign TextCenter
@@ -150,7 +154,8 @@ link aName bName = fork $ do
     (aEnd, bEnd) = bestLinkPair 64 aLink bLink
 
 
-  addInfo [LinkPoint (interpolatePoint aEnd bEnd 0.5) 0] $ do
+  addInfo [LinkPoint (interpolatePoint aEnd bEnd 0.5) 0]
+  addDraw $ do
     transform identityMatrix
     strokeStyle "#000"
 
