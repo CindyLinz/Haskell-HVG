@@ -209,6 +209,56 @@ instance Monad (Builder info ctx) where
       in
         fAct nextName' ctx' bld'
 
+name :: String -> Builder info ctx ()
+name nextName = Builder $ \nextName' ctx bld ->
+  BuilderPartDone
+    (Just nextName)
+    ctx
+    bld
+    ()
+
+addInfo :: info -> Draw -> Builder info ContextState ()
+addInfo info draw = Builder $ \nextName ctx bld ->
+  case nextName of
+    Nothing ->
+      BuilderPartDone
+        nextName
+        ctx
+        bld{ bldDraw = bldDraw bld >> draw }
+        ()
+
+    Just myName ->
+      let
+        bld' = bld
+          { bldNamedInfo = M.insert myName info (bldNamedInfo bld)
+          , bldWaitInfo = M.delete myName (bldWaitInfo bld)
+          }
+
+        bld'' = case M.lookup myName (bldWaitInfo bld) of
+          Nothing ->
+            bld'
+          Just ctxdBlds ->
+            go bld' ctxdBlds
+            where
+              go bld' (ContextedWaitInfoBuilder continue : otherCtxdBlds) =
+                go (suspendBuilderPartWait (continue info bld')) otherCtxdBlds
+
+              go bld' _ =
+                bld'
+
+      in
+        BuilderPartDone Nothing ctx bld'' ()
+
+queryInfo :: String -> Builder info ContextState info
+queryInfo infoName = Builder $ \nextName ctx bld ->
+  case M.lookup infoName (bldNamedInfo bld) of
+    Just info ->
+      BuilderPartDone nextName ctx bld info
+    Nothing ->
+      --error $ infoName ++ " " ++ show (map fst $ M.toList $ bldNamedInfo bld)
+      BuilderPartWaitInfo infoName bld $ ContextedWaitInfoBuilder $ \info bld' ->
+        BuilderPartDone nextName ctx bld' info
+
 data Matrix = Matrix
   Double Double Double
   Double Double Double
