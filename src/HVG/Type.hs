@@ -217,7 +217,7 @@ name nextName = Builder $ \nextName' ctx bld ->
     bld
     ()
 
-addDraw :: Draw -> Builder info ContextState ()
+addDraw :: Draw -> Builder info ctx ()
 addDraw draw = Builder $ \nextName ctx bld ->
   BuilderPartDone
     nextName
@@ -225,7 +225,7 @@ addDraw draw = Builder $ \nextName ctx bld ->
     bld{ bldDraw = bldDraw bld >> draw }
     ()
 
-addInfo :: info -> Builder info ContextState ()
+addInfo :: info -> Builder info ctx ()
 addInfo info = Builder $ \nextName ctx bld ->
   case nextName of
     Nothing ->
@@ -257,7 +257,7 @@ addInfo info = Builder $ \nextName ctx bld ->
       in
         BuilderPartDone Nothing ctx bld'' ()
 
-queryInfo :: String -> Builder info ContextState info
+queryInfo :: String -> Builder info ctx info
 queryInfo infoName = Builder $ \nextName ctx bld ->
   case M.lookup infoName (bldNamedInfo bld) of
     Just info ->
