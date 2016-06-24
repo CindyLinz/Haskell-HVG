@@ -7,6 +7,8 @@ import HVG.ContextState
 import Control.Monad
 import Data.Monoid
 
+type Draw = IO ()
+
 {- sepSeries
   0
   1/2
@@ -21,7 +23,7 @@ sepSeries = 0 : inners where
   halfs = map (/ 2) inners
   mix (a:as) (b:bs) = a : b : mix as bs
 
-box :: Double -> Double -> Double -> Double -> Int -> [Builder Link ContextState ()] -> Builder Link ContextState ()
+box :: Double -> Double -> Double -> Double -> Int -> [Builder Link ContextState Draw ()] -> Builder Link ContextState Draw ()
 box x y w h level bodies = local $ do
   applyTransform (translateMatrix x y)
   setSize (Size w h)
@@ -60,7 +62,7 @@ box x y w h level bodies = local $ do
     body
     applyTransform (translateMatrix 0 (h / fromIntegral level))
 
-ellipse :: Double -> Double -> Double -> Double -> Builder Link ContextState () -> Builder Link ContextState ()
+ellipse :: Double -> Double -> Double -> Double -> Builder Link ContextState Draw () -> Builder Link ContextState Draw ()
 ellipse x y w h body = local $ do
   applyTransform (translateMatrix x y)
   tran <- getTransform
@@ -110,7 +112,7 @@ ellipse x y w h body = local $ do
 
   body
 
-textTop :: String -> Builder Link ContextState ()
+textTop :: String -> Builder Link ContextState Draw ()
 textTop str = local $ do
   tran <- getTransform
   Size w h <- getSize
@@ -125,7 +127,7 @@ textTop str = local $ do
     fillStyle "#000"
     fillText str (Point (w / 2) 15) Nothing
 
-text :: String -> Builder Link ContextState ()
+text :: String -> Builder Link ContextState Draw ()
 text str = local $ do
   tran <- getTransform
   Size w h <- getSize
@@ -140,7 +142,7 @@ text str = local $ do
     fillStyle "#000"
     fillText str (Point (w / 2) (h / 2)) Nothing
 
-link :: String -> String -> Builder Link ContextState ()
+link :: String -> String -> Builder Link ContextState Draw ()
 link aName bName = fork $ do
   aLink <- queryInfo aName
   bLink <- queryInfo bName

@@ -9,7 +9,7 @@ import HVG.ContextState
 
 import Entity
 
-graph :: Builder Link ContextState ()
+graph :: Builder Link ContextState Draw ()
 graph = do
   {-
   box 10 10 100 590 3
