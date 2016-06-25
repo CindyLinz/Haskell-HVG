@@ -1,6 +1,7 @@
 module HVG.Context2D where
 
 import HVG.Type
+import HVG.ContextState
 
 -------------------------------
 -- Canvas context 2d command

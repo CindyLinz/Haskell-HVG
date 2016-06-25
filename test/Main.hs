@@ -2,6 +2,7 @@ module Main where
 
 import HVG
 import HVG.Type
+import HVG.ContextState
 
 import Graph
 

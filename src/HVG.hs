@@ -7,6 +7,7 @@ import qualified Data.Map.Strict as M
 
 import HVG.Type
 import HVG.Context2D
+import HVG.ContextState
 
 drawCanvas :: String -> Size -> Builder info ContextState (IO ()) () -> IO ()
 drawCanvas canvasCSSQuery size (Builder drawBuilder) = do

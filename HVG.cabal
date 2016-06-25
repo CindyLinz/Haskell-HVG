@@ -27,6 +27,8 @@ library
                      , LambdaCase
                      , KindSignatures
                      , FlexibleInstances
+                     , GeneralizedNewtypeDeriving
+                     , PatternSynonyms
 
 executable HVG-test
   hs-source-dirs:      test
