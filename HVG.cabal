@@ -29,6 +29,7 @@ library
                      , FlexibleInstances
                      , GeneralizedNewtypeDeriving
                      , PatternSynonyms
+                     , ViewPatterns
 
 executable HVG-test
   hs-source-dirs:      test
