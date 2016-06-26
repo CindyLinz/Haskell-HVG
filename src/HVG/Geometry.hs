@@ -141,3 +141,85 @@ scale rx ry = Trans
     (1 / rx) 0 0
     0 (1 / ry) 0
   )
+
+data ConicSectionCoef = ConicSectionCoef
+  {-# UNPACK #-} !Double {-# UNPACK #-} !Double
+  {-# UNPACK #-} !Double {-# UNPACK #-} !Double
+  {-# UNPACK #-} !Double {-# UNPACK #-} !Double
+data ConicSection = ConicSectionData
+  ConicSectionCoef
+  ConicSectionParam
+
+data ConicSectionParam
+  = CircleParam
+    {-# UNPACK #-} !Pos -- center
+    {-# UNPACK #-} !Double -- radius
+  | EllipseParam
+    {-# UNPACK #-} !Pos -- center
+    {-# UNPACK #-} !Size -- major radius, minor radius
+    {-# UNPACK #-} !Angle -- 0 means x-axis as major axis
+  | HyperbolaParam
+    {-# UNPACK #-} !Pos -- center
+    {-# UNPACK #-} !Size -- major radius, minor radius
+    {-# UNPACK #-} !Angle -- 0 means x-axis as major axis
+  | ParabolaParam
+    {-# UNPACK #-} !Pos -- vertex
+    {-# UNPACK #-} !Double -- focal length
+    {-# UNPACK #-} !Angle -- 0 means x-axis positive direction as open direction
+
+coerceEllipseParam :: ConicSectionParam -> Maybe ConicSectionParam
+coerceEllipseParam (CircleParam center r) = Just $ EllipseParam center (Size r r) (Angle 0)
+coerceEllipseParam ell@(EllipseParam _ _ _) = Just ell
+coerceEllipseParam _ = Nothing
+
+pattern Circle center r <- ConicSectionData _ (CircleParam center r) where
+  Circle ~center@(Pos cx cy) r = ConicSectionData
+    (ConicSectionCoef 1 0 1 (0 - 2*cx) (0 - 2*cy) (cx*cx + cy*cx - r*r))
+    (CircleParam center r)
+
+pattern Ellipse center rs angle <- ConicSectionData _ (coerceEllipseParam -> Just (EllipseParam center rs angle)) where
+  Ellipse ~center@(Pos cx cy) ~rs@(Size rx ry) angle@(Rad rad) = ConicSectionData
+    (ConicSectionCoef a b c d e f)
+    (if rx == ry then CircleParam center rx else EllipseParam center rs angle)
+    where
+      a = cosAngleQuotRx*cosAngleQuotRx + sinAngleQuotRy*sinAngleQuotRy
+      b = (-2) * cosAngle * sinAngle * (1 / rx*rx - 1 / ry*ry)
+      c = sinAngleQuotRx*sinAngleQuotRx + cosAngleQuotRy*cosAngleQuotRy
+      d = -(2*a*cx + b*cy)
+      e = -(2*c*cy + b*cx)
+      f = a*cx*cx + b*cx*cy + c*cy*cy - 1
+      cosAngle = cos rad
+      sinAngle = sin rad
+      cosAngleQuotRx = cosAngle / rx
+      sinAngleQuotRx = sinAngle / rx
+      cosAngleQuotRy = cosAngle / ry
+      sinAngleQuotRy = sinAngle / ry
+
+pattern ConicSection a b c d e f <- ConicSectionData (ConicSectionCoef a b c d e f) _ where
+  ConicSection a b c d e f = ConicSectionData (ConicSectionCoef a b c d e f) param where
+    rad2 | abs (a - c) < 1e-6 = pi / 2
+         | otherwise = atan (b / (c - a))
+    rad = rad2 / 2
+
+    acSumQuot2 = (a + c) / 2
+    acDiffQuot2CosRad2 = (a - c) / 2 * cos rad2
+    bQuot2SinRad2 = b / 2 * sin rad2
+    cosRad = cos rad
+    sinRad = sin rad
+
+    a' = acSumQuot2 + acDiffQuot2CosRad2 - bQuot2SinRad2
+    b' = 0
+    c' = acSumQuot2 - acDiffQuot2CosRad2 + bQuot2SinRad2
+    d' = d*cosRad - e*sinRad
+    e' = d*sinRad + e*cosRad
+    f' = f
+
+    cx' = d' / (2 * a')
+    cy' = e' / (2 * c')
+
+    rad' | abs a' > abs c' = rad
+         | rad + pi / 2
+
+    param
+      | a' == c' = CircleParam (rotate (-rad) `appTrans` (Pos (-cx') (-cy'))) 
+
