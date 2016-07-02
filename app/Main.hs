@@ -10,7 +10,7 @@ import GHC
 import GHC.Paths (libdir)
 import DynFlags
 
-import HVG
+import HVG.Context2D
 import HVG.Type
 
 main :: IO ()

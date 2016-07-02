@@ -1,6 +1,7 @@
 module HVG.Geometry where
 
 import Data.Monoid
+import Text.Printf
 
 data Vec = Vec
   {-# UNPACK #-} !Double
@@ -47,16 +48,20 @@ appMat
 
 newtype Pos = PosVec Vec
 pattern Pos x y = PosVec (Vec x y)
+instance Show Pos where
+  show (Pos x y) = printf "(%f, %f)" x y
 
 newtype Size = SizeVec Vec
 pattern Size x y = SizeVec (Vec x y)
 
 newtype Dis = DisVec Vec
 pattern Dis x y = DisVec (Vec x y)
+instance Show Dis where
+  show (Dis x y) = printf "(%f, %f)" x y
 
-newtype Angle = Angle Double deriving (Num, Fractional, Real, RealFrac, Floating, RealFloat, Eq, Ord)
+newtype Angle = Angle {unRad :: Double} deriving (Num, Fractional, Real, RealFrac, Floating, RealFloat, Eq, Ord)
 pattern Rad rad = Angle rad
-pattern Deg deg <- ((\(Rad rad) -> rad / pi * 180) -> deg) where
+pattern Deg {unDeg} <- ((\(Rad rad) -> rad / pi * 180) -> unDeg) where
   Deg deg = Rad (deg / 180 * pi)
 
 data Trans = Trans
@@ -68,7 +73,7 @@ instance Monoid Trans where
   mappend (Trans a ai) (Trans b bi) =
     Trans
       (a <> b)
-      (ai <> bi)
+      (bi <> ai)
 
 infixr 6 `appTrans`, `appMat`
 class TransAppable a where
@@ -84,6 +89,12 @@ instance TransAppable Dis where
   appTrans (Trans mat _) (DisVec vec) = DisVec $ appMat (noTransitionMat mat) vec
   appInvTrans (Trans _ invMat) (DisVec vec) = DisVec $ appMat (noTransitionMat invMat) vec
 
+identityTrans :: Trans
+identityTrans = Trans identityMat identityMat where
+  identityMat = Mat
+    1 0 0
+    0 1 0
+
 transitionPos :: Double -> Double -> Trans
 transitionPos x y = Trans
   ( Mat
@@ -91,8 +102,8 @@ transitionPos x y = Trans
     0 1 y
   )
   ( Mat
-    1 0 (0 - x)
-    0 1 (0 - y)
+    1 0 (-x)
+    0 1 (-y)
   )
 
 transition :: Pos -> Trans
@@ -114,12 +125,12 @@ rotateRad :: Double -> Trans
 rotateRad rad =
   Trans
     ( Mat
-      c (0 - s) 0
+      c (-s) 0
       s    c    0
     )
     ( Mat
          c    s 0
-      (0 - s) c 0
+      (-s) c 0
     )
   where
     c = cos rad
@@ -141,3 +152,39 @@ scale rx ry = Trans
     (1 / rx) 0 0
     0 (1 / ry) 0
   )
+
+vecSize :: Vec -> Double
+vecSize (Vec x y) = sqrt ((x*x) + (y*y))
+
+dis :: Pos -> Pos -> Dis
+dis (Pos xFrom yFrom) (Pos xTo yTo) = Dis (xTo - xFrom) (yTo - yFrom)
+
+disSize :: Dis -> Double
+disSize (DisVec vec) = vecSize vec
+
+scaleDis :: Double -> Dis -> Dis
+scaleDis r (Dis x y) = Dis (x*r) (y*r)
+
+unitDis :: Dis -> Dis
+unitDis dis = scaleDis (1 / disSize dis) dis
+
+turnDis :: Angle -> Dis -> Dis
+turnDis angle = appTrans (rotate angle)
+
+revDis :: Dis -> Dis
+revDis (Dis x y) = Dis (-x) (-y)
+
+turnRightDis :: Dis -> Dis
+turnRightDis (Dis x y) = Dis y (-x)
+
+turnLeftDis :: Dis -> Dis
+turnLeftDis (Dis x y) = Dis (-y) x
+
+distance :: Pos -> Pos -> Double
+distance a b = disSize (dis a b)
+
+midPos :: Pos -> Pos -> Pos
+midPos (Pos x1 y1) (Pos x2 y2) = Pos ((x1 + x2)/2) ((y1 + y2)/2)
+
+movePos :: Dis -> Pos -> Pos
+movePos (Dis dx dy) (Pos x y) = Pos (x + dx) (y + dy)

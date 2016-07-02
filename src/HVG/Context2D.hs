@@ -1,7 +1,26 @@
 module HVG.Context2D where
 
+import qualified Data.Map.Strict as M
+import Control.Monad
+
 import HVG.Type
 import HVG.ContextState
+
+drawCanvas :: String -> Size -> Builder info ContextState (IO ()) () -> IO ()
+drawCanvas canvasCSSQuery size (Builder drawBuilder) = do
+  putStrLn   "(function(canvas){"
+  putStrLn   "  if( !document ) return;"
+  putStrLn $ "  var canvas = document.querySelector(" ++ show canvasCSSQuery ++ ")";
+  putStrLn $ "  if( !canvas ) return;"
+  putStrLn $ "  var ctx = canvas.getContext('2d');"
+  case drawBuilder Nothing (initContextState size) initBuilderState of
+    BuilderPartDone _ _ bld _ -> do
+      forM_ (M.toList (bldWaitInfo bld)) $ \(infoName, _) ->
+        putStrLn $ "  console.warn('wait no info: ' + " ++ show infoName ++ ")"
+      bldDraw bld
+    BuilderPartWaitInfo infoName _ _ ->
+      putStrLn $ "  console.warn('wait no draw: ' + " ++ show infoName ++ ")"
+  putStrLn   "})();"
 
 -------------------------------
 -- Canvas context 2d command

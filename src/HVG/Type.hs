@@ -3,10 +3,6 @@ module HVG.Type where
 import Data.Monoid
 import qualified Data.Map.Strict as M
 
-instance Monoid (IO ()) where
-  mempty = return ()
-  mappend = (>>)
-
 data BuilderState info ctx draw = BuilderState
   { bldNamedInfo :: M.Map String info
   , bldWaitInfo :: M.Map String [ContextedWaitInfoBuilder info ctx draw ()]

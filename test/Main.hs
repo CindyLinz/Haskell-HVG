@@ -1,6 +1,6 @@
 module Main where
 
-import HVG
+import HVG.Context2D
 import HVG.Type
 import HVG.ContextState
 
