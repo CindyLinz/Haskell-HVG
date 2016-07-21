@@ -7,4 +7,4 @@ import HVG.Type
 import Graph
 
 main :: IO ()
-main = drawSVG 500 500 graph
+main = drawSVG 145 172 graph

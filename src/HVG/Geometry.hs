@@ -50,6 +50,8 @@ newtype Pos = PosVec Vec
 pattern Pos x y = PosVec (Vec x y)
 instance Show Pos where
   show (Pos x y) = printf "(%f, %f)" x y
+instance PrintfArg Pos where
+  formatArg (Pos x y) fmt suffix = formatArg x fmt $ "," ++ formatArg y fmt suffix
 
 newtype Size = SizeVec Vec
 pattern Size x y = SizeVec (Vec x y)

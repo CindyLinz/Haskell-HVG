@@ -14,6 +14,12 @@ initBuilderState = BuilderState
   , bldWaitInfo = M.empty
   , bldDraw = mempty
   }
+initBuilderStateWithDraw :: draw -> BuilderState info ctx draw
+initBuilderStateWithDraw draw = BuilderState
+  { bldNamedInfo = M.empty
+  , bldWaitInfo = M.empty
+  , bldDraw = draw
+  }
 
 addBuilderWaitInfo :: String -> ContextedWaitInfoBuilder info ctx draw () -> BuilderState info ctx draw -> BuilderState info ctx draw
 addBuilderWaitInfo infoName ctxdBld bld = bld
@@ -57,6 +63,18 @@ local :: Builder info ctx draw a -> Builder info ctx draw a
 local (Builder act) = Builder $ \nextName ctx bld ->
   forBuilderPart (act nextName ctx bld) $ \_ _ bld' a ->
     BuilderPartDone Nothing ctx bld' a
+
+getCtx :: Builder info ctx draw ctx
+getCtx = Builder $ \nextName ctx bld -> BuilderPartDone nextName ctx bld ctx
+
+putCtx :: ctx -> Builder info ctx draw ()
+putCtx ctx = Builder $ \nextName _ bld -> BuilderPartDone nextName ctx bld ()
+
+getDraw :: Builder info ctx draw draw
+getDraw = Builder $ \nextName ctx bld -> BuilderPartDone nextName ctx bld (bldDraw bld)
+
+putDraw :: draw -> Builder info ctx draw ()
+putDraw draw = Builder $ \nextName ctx bld -> BuilderPartDone nextName ctx bld{bldDraw = draw} ()
 
 instance Functor (Builder info ctx draw) where
   fmap f (Builder act) = Builder $ \nextName ctx bld ->
