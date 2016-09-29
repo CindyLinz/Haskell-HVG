@@ -7,7 +7,11 @@ import HVG.Type
 import HVG.SVGState
 
 drawSVG :: Double -> Double -> Builder info SVGState SVGDrawing () -> IO ()
-drawSVG width height (Builder drawBuilder) = do
+drawSVG width height drawBuilder = do
+  let (cmds, pendings) = execBuilder drawBuilder initSVGState []
+  putStrLn $ svgCommand cmds
+  putStrLn $ "<!-- pending names: " ++ show pendings ++ " -->"
+  {-
   case drawBuilder Nothing initSVGState initBuilderState of
     BuilderPartDone _ _ bld _ -> do
       svg width height $ do
@@ -16,6 +20,7 @@ drawSVG width height (Builder drawBuilder) = do
         putStrLn $ "<!-- wait no info: " ++ show infoName ++ " -->"
     BuilderPartWaitInfo infoName _ _ ->
       putStrLn $ "<!-- wait no draw: " ++ show infoName ++ " -->"
+  -}
 
 svgHeader :: Double -> Double -> String
 svgHeader w h = "\

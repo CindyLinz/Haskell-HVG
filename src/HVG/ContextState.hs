@@ -203,72 +203,72 @@ interpolatePoint (Point x1 y1) (Point x2 y2) ratio =
 -- manipulate ContextState
 --
 
-setTransform :: Matrix -> Builder info ContextState draw ()
-setTransform val = Builder $ \nextName ctx bld -> BuilderPartDone nextName ctx{ctxTransform = val} bld ()
+putTransform :: Matrix -> Builder info ContextState draw ()
+putTransform val = modifyStructState $ \ctx -> ctx{ctxTransform = val}
 getTransform :: Builder info ContextState draw Matrix
-getTransform = Builder $ \nextName ctx bld -> BuilderPartDone nextName ctx bld (ctxTransform ctx)
+getTransform = ctxTransform <$> getStructState
 applyTransform :: Matrix -> Builder info ContextState draw ()
-applyTransform val = Builder $ \nextName ctx bld -> BuilderPartDone nextName ctx{ctxTransform = ctxTransform ctx <> val} bld ()
+applyTransform val = modifyStructState $ \ctx -> ctx{ctxTransform = ctxTransform ctx <> val}
 
 setSize :: Size -> Builder info ContextState draw ()
-setSize val = Builder $ \nextName ctx bld -> BuilderPartDone nextName ctx{ctxSize = val} bld ()
+setSize val = modifyStructState $ \ctx -> ctx{ctxSize = val}
 getSize :: Builder info ContextState draw Size
-getSize = Builder $ \nextName ctx bld -> BuilderPartDone nextName ctx bld (ctxSize ctx)
+getSize = ctxSize <$> getStructState
 
 
 setFill :: Maybe String -> Builder info ContextState draw ()
-setFill val = Builder $ \nextName ctx bld -> BuilderPartDone nextName ctx{ctxFill = val} bld ()
+setFill val = modifyStructState $ \ctx -> ctx{ctxFill = val}
 getFill :: Builder info ContextState draw (Maybe String)
-getFill = Builder $ \nextName ctx bld -> BuilderPartDone nextName ctx bld (ctxFill ctx)
+getFill = ctxFill <$> getStructState
 
 setStroke :: Maybe String -> Builder info ContextState draw ()
-setStroke val = Builder $ \nextName ctx bld -> BuilderPartDone nextName ctx{ctxStroke = val} bld ()
+setStroke val = modifyStructState $ \ctx -> ctx{ctxStroke = val}
 getStroke :: Builder info ContextState draw (Maybe String)
-getStroke = Builder $ \nextName ctx bld -> BuilderPartDone nextName ctx bld (ctxStroke ctx)
+getStroke = ctxStroke <$> getStructState
 
 
 setLineWidth :: Double -> Builder info ContextState draw ()
-setLineWidth val = Builder $ \nextName ctx bld -> BuilderPartDone nextName ctx{ctxLineWidth = val} bld ()
+setLineWidth val = modifyStructState $ \ctx -> ctx{ctxLineWidth = val}
 getLineWidth :: Builder info ContextState draw Double
-getLineWidth = Builder $ \nextName ctx bld -> BuilderPartDone nextName ctx bld (ctxLineWidth ctx)
+getLineWidth = ctxLineWidth <$> getStructState
 
 setLineCap :: LineCap -> Builder info ContextState draw ()
-setLineCap val = Builder $ \nextName ctx bld -> BuilderPartDone nextName ctx{ctxLineCap = val} bld ()
+setLineCap val = modifyStructState $ \ctx -> ctx{ctxLineCap = val}
 getLineCap :: Builder info ContextState draw LineCap
-getLineCap = Builder $ \nextName ctx bld -> BuilderPartDone nextName ctx bld (ctxLineCap ctx)
+getLineCap = ctxLineCap <$> getStructState
 
 setLineJoin :: LineJoin -> Builder info ContextState draw ()
-setLineJoin val = Builder $ \nextName ctx bld -> BuilderPartDone nextName ctx{ctxLineJoin = val} bld ()
+setLineJoin val = modifyStructState $ \ctx -> ctx{ctxLineJoin = val}
 getLineJoin :: Builder info ContextState draw LineJoin
-getLineJoin = Builder $ \nextName ctx bld -> BuilderPartDone nextName ctx bld (ctxLineJoin ctx)
+getLineJoin = ctxLineJoin <$> getStructState
 
 setMiterLimit :: Double -> Builder info ContextState draw ()
-setMiterLimit val = Builder $ \nextName ctx bld -> BuilderPartDone nextName ctx{ctxMiterLimit = val} bld ()
+setMiterLimit val = modifyStructState $ \ctx -> ctx{ctxMiterLimit = val}
 getMiterLimit :: Builder info ContextState draw Double
-getMiterLimit = Builder $ \nextName ctx bld -> BuilderPartDone nextName ctx bld (ctxMiterLimit ctx)
+getMiterLimit = ctxMiterLimit <$> getStructState
 
 setLineDash :: [Double] -> Builder info ContextState draw ()
-setLineDash val = Builder $ \nextName ctx bld -> BuilderPartDone nextName ctx{ctxLineDash = val} bld ()
+setLineDash val = modifyStructState $ \ctx -> ctx{ctxLineDash = val}
 getLineDash :: Builder info ContextState draw [Double]
-getLineDash = Builder $ \nextName ctx bld -> BuilderPartDone nextName ctx bld (ctxLineDash ctx)
+getLineDash = ctxLineDash <$> getStructState
 
 setLineDashOffset :: Double -> Builder info ContextState draw ()
-setLineDashOffset val = Builder $ \nextName ctx bld -> BuilderPartDone nextName ctx{ctxLineDashOffset = val} bld ()
+setLineDashOffset val = modifyStructState $ \ctx -> ctx{ctxLineDashOffset = val}
 getLineDashOffset :: Builder info ContextState draw Double
-getLineDashOffset = Builder $ \nextName ctx bld -> BuilderPartDone nextName ctx bld (ctxLineDashOffset ctx)
+getLineDashOffset = ctxLineDashOffset <$> getStructState
 
 
 setTextAlign :: TextAlign -> Builder info ContextState draw ()
-setTextAlign val = Builder $ \nextName ctx bld -> BuilderPartDone nextName ctx{ctxTextAlign = val} bld ()
+setTextAlign val = modifyStructState $ \ctx -> ctx{ctxTextAlign = val}
 getTextAlign :: Builder info ContextState draw TextAlign
-getTextAlign = Builder $ \nextName ctx bld -> BuilderPartDone nextName ctx bld (ctxTextAlign ctx)
+getTextAlign = ctxTextAlign <$> getStructState
 
 setTextBaseline :: TextBaseline -> Builder info ContextState draw ()
-setTextBaseline val = Builder $ \nextName ctx bld -> BuilderPartDone nextName ctx{ctxTextBaseline = val} bld ()
+setTextBaseline val = modifyStructState $ \ctx -> ctx{ctxTextBaseline = val}
 getTextBaseline :: Builder info ContextState draw TextBaseline
-getTextBaseline = Builder $ \nextName ctx bld -> BuilderPartDone nextName ctx bld (ctxTextBaseline ctx)
+getTextBaseline = ctxTextBaseline <$> getStructState
 
 setFont :: String -> Builder info ContextState draw ()
-setFont val = Builder $ \nextName ctx bld -> BuilderPartDone nextName ctx{ctxFont = val} bld ()
+setFont val = modifyStructState $ \ctx -> ctx{ctxFont = val}
 getFont :: Builder info ContextState draw String
-getFont = Builder $ \nextName ctx bld -> BuilderPartDone nextName ctx bld (ctxFont ctx)
+getFont = ctxFont <$> getStructState

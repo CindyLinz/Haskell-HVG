@@ -7,12 +7,17 @@ import HVG.Type
 import HVG.ContextState
 
 drawCanvas :: String -> Size -> Builder info ContextState (IO ()) () -> IO ()
-drawCanvas canvasCSSQuery size (Builder drawBuilder) = do
+drawCanvas canvasCSSQuery size drawBuilder = do
   putStrLn   "(function(canvas){"
   putStrLn   "  if( !document ) return;"
   putStrLn $ "  var canvas = document.querySelector(" ++ show canvasCSSQuery ++ ")";
   putStrLn $ "  if( !canvas ) return;"
   putStrLn $ "  var ctx = canvas.getContext('2d');"
+  let (cmd, pendings) = execBuilder drawBuilder (initContextState size) (pure ())
+  cmd
+  unless (null pendings) $ do
+    putStrLn $ "<!-- pending names: " ++ show pendings ++ " -->"
+  {-
   case drawBuilder Nothing (initContextState size) initBuilderState of
     BuilderPartDone _ _ bld _ -> do
       forM_ (M.toList (bldWaitInfo bld)) $ \(infoName, _) ->
@@ -20,6 +25,7 @@ drawCanvas canvasCSSQuery size (Builder drawBuilder) = do
       bldDraw bld
     BuilderPartWaitInfo infoName _ _ ->
       putStrLn $ "  console.warn('wait no draw: ' + " ++ show infoName ++ ")"
+  -}
   putStrLn   "})();"
 
 -------------------------------

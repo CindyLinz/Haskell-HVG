@@ -43,7 +43,7 @@ box x y w h level bodies = local $ do
         (pointDistance center p)
 
   addInfo link
-  addDraw $ do
+  appendAgingState $ do
     strokeStyle "#000"
     transform tran
 
@@ -84,7 +84,7 @@ ellipse x y w h body = local $ do
     link = map (\p -> LinkPoint p 0) $ map sepToPoint sepSeries
 
   addInfo link
-  addDraw $ do
+  appendAgingState $ do
     strokeStyle "#000"
     transform centerTran
 
@@ -118,7 +118,7 @@ textTop str = local $ do
   Size w h <- getSize
 
   addInfo []
-  addDraw $ do
+  appendAgingState $ do
     transform tran
     textBaseline TextMiddle
     textAlign TextCenter
@@ -133,7 +133,7 @@ text str = local $ do
   Size w h <- getSize
 
   addInfo []
-  addDraw $ do
+  appendAgingState $ do
     transform tran
     textBaseline TextMiddle
     textAlign TextCenter
@@ -157,7 +157,7 @@ link aName bName = fork $ do
 
 
   addInfo [LinkPoint (interpolatePoint aEnd bEnd 0.5) 0]
-  addDraw $ do
+  appendAgingState $ do
     transform identityMatrix
     strokeStyle "#000"
 
