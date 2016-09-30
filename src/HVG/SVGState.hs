@@ -39,6 +39,11 @@ data PathDrawing = PathDrawing
   {-# UNPACK #-} !Pos -- begin pos
   [Segment] -- each seg without begin
 
+instance Monoid PathDrawing where
+  mempty = PathDrawing (Pos 0 0) []
+  --mempty = PathDrawing (appTrans tr (Pos 0 0)) []
+  PathDrawing begin1 segs1 `mappend` PathDrawing begin2 segs2 = PathDrawing begin1 (segs1 ++ segs2)
+
 newtype Contour = Contour [Path]
 data Path = Path {-# UNPACK #-} !Pos [Segment]
 
@@ -74,15 +79,15 @@ instance TransAppable Segment where
 contour :: Builder info SVGState ContourDrawing () -> Builder info SVGState SVGDrawing ()
 contour buildContour = do
   ctx <- getStructState
-  appendAgingState [Contour (fst $ execBuilder buildContour ctx [])]
+  appendAgingState [Contour (fst $ execBuilder buildContour ctx)]
 
 pathMightReverse :: (Path -> Path) -> Pos -> Builder info SVGState PathDrawing () -> Builder info SVGState ContourDrawing ()
 pathMightReverse rev beginPos buildPath = local $ do
   appTr $ transition beginPos
   ctx <- getStructState
   tr <- getTr
-  let PathDrawing beginPos segs = fst $ execBuilder buildPath ctx (PathDrawing (appTrans tr (Pos 0 0)) [])
-  appendAgingState [rev $ Path beginPos segs]
+  let PathDrawing beginPos segs = fst $ execBuilder buildPath ctx
+  appendAgingState [rev $ Path (appTrans tr beginPos) segs]
 
 path :: Pos -> Builder info SVGState PathDrawing () -> Builder info SVGState ContourDrawing ()
 path = pathMightReverse id
@@ -106,9 +111,7 @@ reversePath (Path beginPos segs) = go beginPos segs [] where
 line :: Pos -> Builder info SVGState PathDrawing ()
 line pos = do
   tr <- getTr
-  PathDrawing beginPos segs <- getAgingState
-
-  putAgingState $ PathDrawing beginPos (segs ++ [appTrans tr (LineSeg pos)])
+  appendAgingState $ PathDrawing undefined [appTrans tr (LineSeg pos)]
   appTr $ transition pos
 
 l :: Double -> Double -> Builder info SVGState PathDrawing ()
@@ -117,8 +120,7 @@ l x y = line (Pos x y)
 bezier :: Pos -> Pos -> Pos -> Builder info SVGState PathDrawing ()
 bezier c1 c2 pos = do
   tr <- getTr
-  PathDrawing beginPos segs <- getAgingState
-  putAgingState $ PathDrawing beginPos (segs ++ [appTrans tr (BezierSeg c1 c2 pos)])
+  appendAgingState $ PathDrawing undefined [appTrans tr (BezierSeg c1 c2 pos)]
   appTr $ transition pos
 
 b :: Double -> Double -> Double -> Double -> Double -> Double -> Builder info SVGState PathDrawing ()
@@ -127,7 +129,6 @@ b x1 y1 x2 y2 x y = bezier (Pos x1 y1) (Pos x2 y2) (Pos x y)
 arc :: Pos -> Angle -> Builder info SVGState PathDrawing ()
 arc endPos angle = do
   tr <- getTr
-  PathDrawing veryBeginPos segs <- getAgingState
 
   let
     beginPos = Pos 0 0
@@ -172,7 +173,7 @@ arc endPos angle = do
       , let c2 = (sShift `movePos` c0)
       = BezierSeg c1 c2 endPos : laterSegs
 
-  putAgingState $ PathDrawing veryBeginPos (segs ++ map (appTrans tr) arcSegs)
+  appendAgingState $ PathDrawing undefined (map (appTrans tr) arcSegs)
   appTr $ transition endPos
 
 a :: Double -> Double -> Double -> Builder info SVGState PathDrawing ()

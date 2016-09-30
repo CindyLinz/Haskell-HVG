@@ -18,6 +18,7 @@ graph = do
     , box 10 10 80 60 2 []
     ]
   -}
+  link "TEntry 1-1" "TVar 1"
   box 450 10 100 590 1 $ pure $ do
     textTop "world"
 
@@ -41,7 +42,7 @@ graph = do
       , text "3"
       ]
 
-    link "TEntry 1-1" "TVar 1"
+    --link "TEntry 1-1" "TVar 1"
 
   name "TRec 2-1"
   box 200 150 100 240 1 $ pure $ do

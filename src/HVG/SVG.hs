@@ -8,7 +8,7 @@ import HVG.SVGState
 
 drawSVG :: Double -> Double -> Builder info SVGState SVGDrawing () -> IO ()
 drawSVG width height drawBuilder = do
-  let (cmds, pendings) = execBuilder drawBuilder initSVGState []
+  let (cmds, pendings) = execBuilder drawBuilder initSVGState
   putStrLn $ svgCommand cmds
   putStrLn $ "<!-- pending names: " ++ show pendings ++ " -->"
   {-

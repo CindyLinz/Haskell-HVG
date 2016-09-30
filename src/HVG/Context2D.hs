@@ -13,7 +13,7 @@ drawCanvas canvasCSSQuery size drawBuilder = do
   putStrLn $ "  var canvas = document.querySelector(" ++ show canvasCSSQuery ++ ")";
   putStrLn $ "  if( !canvas ) return;"
   putStrLn $ "  var ctx = canvas.getContext('2d');"
-  let (cmd, pendings) = execBuilder drawBuilder (initContextState size) (pure ())
+  let (cmd, pendings) = execBuilder drawBuilder (initContextState size)
   cmd
   unless (null pendings) $ do
     putStrLn $ "<!-- pending names: " ++ show pendings ++ " -->"

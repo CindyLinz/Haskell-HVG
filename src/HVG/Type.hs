@@ -2,6 +2,12 @@ module HVG.Type where
 
 import Data.Monoid
 import qualified Data.Map.Strict as M
+import Data.IterLinkedList as L
+
+data AgingBuilder agingState = AgingBuilder
+  { agingBuilderIter :: Integer
+  , agingBuilderSegs :: (L.LinkedList Integer agingState)
+  }
 
 data Builder info structState agingState a = Builder
   { unBuilder ::
@@ -20,7 +26,7 @@ data SuspendedBuilder info structState agingState a = SuspendedBuilder
 
 data BuilderPart info structState agingState a = BuilderPart
   { unBuilderPart ::
-    ( agingState
+    ( AgingBuilder agingState
    -> M.Map String info -- 取了名字的資訊
    -> M.Map String [SuspendedBuilder info structState agingState ()]
    -> BuilderMode info structState agingState a
@@ -31,30 +37,33 @@ data BuilderMode info structState agingState a
   = BuilderExec
     (Maybe String)
     structState
-    agingState
+    (AgingBuilder agingState)
     (M.Map String info)
     (M.Map String [SuspendedBuilder info structState agingState ()])
     a
   | BuilderWait
     String -- 正在等待的名字
-    agingState -- 暫停以前已經可以畫的部分
+    (AgingBuilder agingState) -- 留好暫停部位的洞, 以及指定可以先繼續畫的部位
     (M.Map String info)
     (M.Map String [SuspendedBuilder info structState agingState ()])
     (SuspendedBuilder info structState agingState a)
 
-runBuilder :: Builder info structState agingState a -> structState -> agingState -> (a, (agingState, [String]))
-runBuilder (Builder m) structState agingState =
-  case unBuilderPart (m Nothing structState) agingState M.empty M.empty of
+runBuilder :: Monoid agingState => Builder info structState agingState a -> structState -> (a, (agingState, [String]))
+runBuilder (Builder m) structState =
+  let
+    initAgingSegs = L.singleton mempty
+    initAgingState = AgingBuilder (L.lastIter initAgingSegs) initAgingSegs
+  in case unBuilderPart (m Nothing structState) initAgingState M.empty M.empty of
     BuilderExec maybeName' structState' agingState' namedInfo' suspendedBuilder' a ->
-      (a, (agingState', M.keys suspendedBuilder'))
+      (a, (mconcat (L.toList (agingBuilderSegs agingState')), M.keys suspendedBuilder'))
     BuilderWait needName agingState' namedInfo' suspendedBuilder' susp ->
-      (undefined, (agingState', M.keys suspendedBuilder'))
+      (undefined, (mconcat (L.toList (agingBuilderSegs agingState')), M.keys suspendedBuilder'))
 
-evalBuilder :: Builder info structState agingState a -> structState -> agingState -> a
-evalBuilder builder structState agingState = fst $ runBuilder builder structState agingState
+evalBuilder :: Monoid agingState => Builder info structState agingState a -> structState -> a
+evalBuilder builder structState = fst $ runBuilder builder structState
 
-execBuilder :: Builder info structState agingState a -> structState -> agingState -> (agingState, [String])
-execBuilder builder structState agingState = snd $ runBuilder builder structState agingState
+execBuilder :: Monoid agingState => Builder info structState agingState a -> structState -> (agingState, [String])
+execBuilder builder structState = snd $ runBuilder builder structState
 
 instance Functor (Builder info structState agingState) where
   fmap f (Builder m) = Builder $ \maybeName structState ->
@@ -103,7 +112,7 @@ instance Monad (Builder info structState agingState) where
 
 
 mapBuilderPart
-  :: ( Maybe String -> structState -> agingState -> M.Map String info
+  :: ( Maybe String -> structState -> AgingBuilder agingState -> M.Map String info
     -> M.Map String [SuspendedBuilder info structState agingState ()]
     -> a -- 此函數的參數部分就是 BuilderExec 裡會拿到的各項
     -> BuilderMode info structState agingState b
@@ -157,12 +166,14 @@ addInfo info =
             (agingState'', namedInfo'', suspendedBuilder'') =
               case M.lookup name suspendedBuilder of
                 Nothing -> (agingState, namedInfo', suspendedBuilder)
-                Just susps -> go agingState namedInfo'
-                  (M.delete name suspendedBuilder) susps
+                Just susps -> go agingState namedInfo' (M.delete name suspendedBuilder) susps
                   where
+                    AgingBuilder iter _ = agingState
                     go agingState namedInfo suspendedBuilder susps =
                       case susps of
-                        [] -> (agingState, namedInfo, suspendedBuilder)
+                        [] -> (AgingBuilder iter agingSegs, namedInfo, suspendedBuilder)
+                          where
+                            AgingBuilder _ agingSegs = agingState
                         SuspendedBuilder susp : susps ->
                           let BuilderPart sPart = susp info
                           in case sPart agingState namedInfo suspendedBuilder of
@@ -178,7 +189,7 @@ addInfo info =
                               go agingState' namedInfo'
                                 (M.insertWith (++) needName [susp'] suspendedBuilder') susps
 
-queryInfo :: String -> Builder info structState agingState info
+queryInfo :: Monoid agingState => String -> Builder info structState agingState info
 queryInfo name =
   Builder $ \maybeName structState ->
     BuilderPart $ \agingState namedInfo suspendedBuilder->
@@ -189,16 +200,20 @@ queryInfo name =
             agingState namedInfo suspendedBuilder info
 
         Nothing ->
-          BuilderWait name agingState namedInfo suspendedBuilder $
+          BuilderWait name agingStateNewHole namedInfo suspendedBuilder $
             SuspendedBuilder $ \info ->
-              BuilderPart $ \agingState' namedInfo' suspendedBuilder' ->
+              BuilderPart $ \(AgingBuilder _ agingSegs') namedInfo' suspendedBuilder' ->
                 BuilderExec maybeName structState
-                  agingState' namedInfo' suspendedBuilder' info
+                  (AgingBuilder iter agingSegs') namedInfo' suspendedBuilder' info
+          where
+            AgingBuilder iter agingSegs = agingState
+            agingSegsNewHole = L.insertAfter iter mempty agingSegs
+            agingStateNewHole = AgingBuilder (L.next agingSegsNewHole iter) agingSegsNewHole
 
 fork
   :: Builder info structState agingState ()
     -- 或是 Builder info structState agingState a 也可以
-    -- 不過放在那裡的東西無論是什麼, 注定是要作廢的 [1]
+    -- 不過放在那裡的東西無論是什麼, 註定是要作廢的 [1]
   -> Builder info structState agingState ()
 fork (Builder m) =
   Builder $ \maybeName structState ->
@@ -234,20 +249,9 @@ modifyStructState f = Builder $ \maybeName structState ->
   BuilderPart $ \agingState namedInfo suspendedBuilder ->
     BuilderExec maybeName (f structState) agingState namedInfo suspendedBuilder ()
 
-getAgingState :: Builder info structState agingState agingState
-getAgingState = Builder $ \maybeName structState ->
-  BuilderPart $ \agingState namedInfo suspendedBuilder ->
-    BuilderExec maybeName structState agingState namedInfo suspendedBuilder agingState
-
-putAgingState :: agingState -> Builder info structState agingState ()
-putAgingState agingState = Builder $ \maybeName structState ->
-  BuilderPart $ \_ namedInfo suspendedBuilder ->
-    BuilderExec maybeName structState agingState namedInfo suspendedBuilder ()
-
-modifyAgingState :: (agingState -> agingState) -> Builder info structState agingState ()
-modifyAgingState f = Builder $ \maybeName structState ->
-  BuilderPart $ \agingState namedInfo suspendedBuilder ->
-    BuilderExec maybeName structState (f agingState) namedInfo suspendedBuilder ()
-
 appendAgingState :: Monoid agingState => agingState -> Builder info structState agingState ()
-appendAgingState agingState = modifyAgingState (<> agingState)
+appendAgingState agingState = Builder $ \maybeName structState ->
+  BuilderPart $ \(AgingBuilder agingIter agingSegs) namedInfo suspendedBuilder ->
+    BuilderExec maybeName structState
+      (AgingBuilder agingIter (L.modify agingIter (<> agingState) agingSegs))
+      namedInfo suspendedBuilder ()

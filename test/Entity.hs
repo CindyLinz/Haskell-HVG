@@ -123,8 +123,8 @@ textTop str = local $ do
     textBaseline TextMiddle
     textAlign TextCenter
 
-    font "15px sans-serif"
-    fillStyle "#000"
+    font "15px bold sans-serif"
+    fillStyle "#00f"
     fillText str (Point (w / 2) 15) Nothing
 
 text :: String -> Builder Link ContextState Draw ()
@@ -139,7 +139,7 @@ text str = local $ do
     textAlign TextCenter
 
     font "15px sans-serif"
-    fillStyle "#000"
+    fillStyle "#060"
     fillText str (Point (w / 2) (h / 2)) Nothing
 
 link :: String -> String -> Builder Link ContextState Draw ()
@@ -159,9 +159,9 @@ link aName bName = fork $ do
   addInfo [LinkPoint (interpolatePoint aEnd bEnd 0.5) 0]
   appendAgingState $ do
     transform identityMatrix
-    strokeStyle "#000"
+    strokeStyle "#f00"
 
-    lineWidth 1
+    lineWidth 2
 
     beginPath
     moveTo aEnd
